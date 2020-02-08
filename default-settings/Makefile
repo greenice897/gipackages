@@ -8,7 +8,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=default-settings
 PKG_VERSION:=1.0
-PKG_RELEASE:=1
+PKG_RELEASE:=3
 PKG_LICENSE:=GPLv3
 PKG_LICENSE_FILES:=LICENSE
 
@@ -21,8 +21,6 @@ define Package/default-settings
   CATEGORY:=LuCI
   TITLE:=LuCI support for default-settings
   PKGARCH:=all
-#  DEPENDS:=+@LUCI_LANG_zh-cn +nginx +php7 +php7-fpm +php7-mod-curl +php7-mod-gd +php7-mod-iconv +php7-mod-json +php7-mod-mbstring +php7-mod-opcache +php7-mod-session +php7-mod-zip
-#  DEPENDS:=+@LUCI_LANG_zh-cn lxc kmod-ikconfig lxc-attach lxc-auto lxc-autostart lxc-cgroup lxc-checkconfig lxc-common lxc-config lxc-configs lxc-console lxc-copy lxc-create lxc-destroy lxc-device lxc-execute lxc-freeze lxc-hooks lxc-info lxc-init lxc-ls lxc-lua lxc-monitor lxc-monitord lxc-snapshot lxc-start lxc-stop lxc-templates lxc-top lxc-unfreeze lxc-unprivileged lxc-unshare lxc-user-nic lxc-usernsexec lxc-wait liblxc luci-app-lxc rpcd-mod-lxc htop debootstrap bash lscpu gnupg fuse-utils kmod-fuse kmod-veth kmod-macvlan kmod-tulip
   DEPENDS:=+@LUCI_LANG_zh-cn
 endef
 

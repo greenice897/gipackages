@@ -14,38 +14,15 @@ uci commit network
 uci set fstab.@global[0].anon_mount=1
 uci commit fstab
 
-#rm -f /usr/lib/lua/luci/view/admin_status/index/mwan.htm
-#rm -f /usr/lib/lua/luci/view/admin_status/index/upnp.htm
-#rm -f /usr/lib/lua/luci/view/admin_status/index/ddns.htm
-#rm -f /usr/lib/lua/luci/view/admin_status/index/minidlna.htm
-
-#sed -i 's/\"services\"/\"nas\"/g' /usr/lib/lua/luci/controller/aria2.lua
-#sed -i 's/services/nas/g' /usr/lib/lua/luci/view/aria2/overview_status.htm
-#sed -i 's/\"services\"/\"nas\"/g' /usr/lib/lua/luci/controller/hd_idle.lua
-#sed -i 's/\"services\"/\"nas\"/g' /usr/lib/lua/luci/controller/samba4.lua
-#sed -i 's/\"services\"/\"nas\"/g' /usr/lib/lua/luci/controller/minidlna.lua
-#sed -i 's/\"services\"/\"nas\"/g' /usr/lib/lua/luci/controller/transmission.lua
-#sed -i 's/\"services\"/\"nas\"/g' /usr/lib/lua/luci/controller/mjpg-streamer.lua
-#sed -i 's/\"services\"/\"nas\"/g' /usr/lib/lua/luci/controller/p910nd.lua
-#sed -i 's/\"services\"/\"nas\"/g' /usr/lib/lua/luci/controller/usb_printer.lua
-#sed -i 's/\"services\"/\"nas\"/g' /usr/lib/lua/luci/controller/xunlei.lua
-
-################在状态栏增加CPU温度显示####################
-# sed -i 's/wifinets   = stat.wifi_networks()$/&,/' /usr/lib/lua/luci/view/admin_status/index.htm
-# sed -i '/wifinets   = stat.wifi_networks()/a\			cputemperature = luci.sys.exec("echo $(($(cat /sys/class/thermal/thermal_zone0/temp) / 1000))")' /usr/lib/lua/luci/view/admin_status/index.htm
-# sed -i '/e.innerHTML = progressbar(info.conncount, info.connmax);/a\\n			if (e = document.getElementById("cputemperature")) // CPU 温度赋值\n				e.innerHTML = info.cputemperature + " ℃";' /usr/lib/lua/luci/view/admin_status/index.htm
-# sed -i '/Load Average/a\		<div class="tr"><div class="td left" width="33%"><%:CPU Temperature%></div><div class="td left" id="cputemperature">-</div></div>' /usr/lib/lua/luci/view/admin_status/index.htm
-################状态栏增加CPU温度显示#####################
-
 ln -sf /sbin/ip /usr/bin/ip
 
 #rm -rf /tmp/luci-modulecache/
 #rm -f /tmp/luci-indexcache
 
-#sed -i 's/downloads.openwrt.org/openwrt.proxy.ustclug.org/g' /etc/opkg/distfeeds.conf
+sed -i 's/downloads.openwrt.org/openwrt.proxy.ustclug.org/g' /etc/opkg/distfeeds.conf
 sed -i 's/root::0:0:99999:7:::/root:$1$V4UetPzk$CYXluq4wUazHjmCDBCqXF.:0:0:99999:7:::/g' /etc/shadow
 
-#sed -i "s/# //g" /etc/opkg/distfeeds.conf
+sed -i "s/# //g" /etc/opkg/distfeeds.conf
 
 sed -i '/REDIRECT --to-ports 53/d' /etc/firewall.user
 echo "iptables -t nat -A PREROUTING -p udp --dport 53 -j REDIRECT --to-ports 53" >> /etc/firewall.user
@@ -58,34 +35,9 @@ echo "iptables -t nat -A PREROUTING -p tcp --dport 53 -j REDIRECT --to-ports 53"
 #wifi up
 
 sed -i '/DISTRIB_REVISION/d' /etc/openwrt_release
-echo "DISTRIB_REVISION='V2020.0206 By Greenice'" >> /etc/openwrt_release
+echo "DISTRIB_REVISION='V2020.0208 By Greenice'" >> /etc/openwrt_release
 sed -i '/DISTRIB_DESCRIPTION/d' /etc/openwrt_release
 echo "DISTRIB_DESCRIPTION='OpenWrt '" >> /etc/openwrt_release
-
-#################为Kodexplorer私有云配置php和nginx##############
-##--------/etc/php.ini--------##
-# sed -i 's#;open_basedir =#open_basedir = /mnt/sda1#;s#memory_limit = 8M#memory_limit = 30M#;s#post_max_size = 8M#post_max_size = 20M#;s#doc_root = "/www"#doc_root = "/mnt/sda1/www"#;s#upload_max_filesize = 2M#upload_max_filesize = 20M#' /etc/php.ini
-##--------php.ini----end----##
-##--------/etc/php7-fpm.d/www.conf--------##
-# sed -i 's/;listen.mode = 0666/listen.mode = 0666/;s/;listen.allowed_clients = 127.0.0.1/listen.allowed_clients = 127.0.0.1/' /etc/php7-fpm.d/www.conf
-##--------www.conf----end----##
-##--------/etc/nginx/nginx.conf--------##
-#---------webserver IS uhttpd
-#sed -i 's/listen       80;/listen       12288;/' /etc/nginx/nginx.conf
-#sed -i 's:root   html;:root   /mnt/sda1/www;:;s:index  index.html index.htm;:index  index.php index.html index.htm;:' /etc/nginx/nginx.conf
-#sed -i '65s/#//' /etc/nginx/nginx.conf
-#sed -i '66s:        #    root           html;:            root           /mnt/sda1/www;:' /etc/nginx/nginx.conf
-#sed -i '67s~        #    fastcgi_pass   127.0.0.1:9000;~            fastcgi_pass   unix:/var/run/php7-fpm.sock;~' /etc/nginx/nginx.conf
-#sed -i '68s/        #    fastcgi_index  index.php;/            fastcgi_index  index.php;/' /etc/nginx/nginx.conf
-#sed -i '69s:        #    fastcgi_param  SCRIPT_FILENAME  /scripts$fastcgi_script_name;:            fastcgi_param  SCRIPT_FILENAME  $document_root$fastcgi_script_name;:' /etc/nginx/nginx.conf
-#sed -i '70s/        #    include        fastcgi_params;/            include        fastcgi_params;/' /etc/nginx/nginx.conf
-#sed -i '71s/        #}/        }/' /etc/nginx/nginx.conf
-#--------webserver IS nginx
-# sed -i '49a\\' /etc/nginx/nginx.conf
-# sed -i '49a\\' /etc/nginx/nginx.conf
-# sed -i '50a\	include phprpm.conf;' /etc/nginx/nginx.conf
-##--------nginx.conf----end--------##
-#################为Kodexplorer私有云配置php和nginx##############
 
 #sed -i 's/cbi.submit\"] = true/cbi.submit\"] = \"1\"/g' /usr/lib/lua/luci/dispatcher.lua
 
