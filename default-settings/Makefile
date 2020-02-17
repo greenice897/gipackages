@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2016-2018 GitHub 
+# Copyright (C) 2016-2017 GitHub 
 #
 # This is free software, licensed under the GNU General Public License v3.
 # See /LICENSE for more information.
@@ -7,8 +7,10 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=default-settings
-PKG_VERSION:=1.0
-PKG_RELEASE:=44444444444444444444444444444444444444444444NSE
+PKG_VERSION:=1.1
+PKG_RELEASE:=51
+PKG_LICENSE:=GPLv3
+PKG_LICENSE_FILES:=LICENSE
 
 PKG_BUILD_DIR := $(BUILD_DIR)/$(PKG_NAME)
 
@@ -17,18 +19,13 @@ include $(INCLUDE_DIR)/package.mk
 define Package/default-settings
   SECTION:=luci
   CATEGORY:=LuCI
-  TITLE:=LuCI support for default-settings
+  TITLE:=LuCI support for Default Settings
   PKGARCH:=all
-  DEPENDS:=+@LUCI_LANG_zh-cn
+  DEPENDS:=+luci-base +@LUCI_LANG_zh-cn
 endef
 
 define Package/default-settings/description
-	This is router default settings Support Packages.
-endef
-
-define Build/Prepare
-	$(foreach po,$(wildcard ${CURDIR}/i18n/*.po), \
-		po2lmo $(po) $(PKG_BUILD_DIR)/$(patsubst %.po,%.lmo,$(notdir $(po)));)
+	Language Support Packages.
 endef
 
 define Build/Configure
@@ -38,12 +35,12 @@ define Build/Compile
 endef
 
 define Package/default-settings/install
-#	$(INSTALL_DIR) $(1)/etc/nginx
-#	$(INSTALL_BIN) ./files/phprpm.conf $(1)/etc/nginx/phprpm.conf
-	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/i18n
 	$(INSTALL_DIR) $(1)/etc/uci-defaults
-	$(INSTALL_DATA) $(PKG_BUILD_DIR)/*.lmo $(1)/usr/lib/lua/luci/i18n/
-	$(INSTALL_BIN) ./files/z-default-settings $(1)/etc/uci-defaults/99-default-settings
+	$(INSTALL_BIN) ./files/zzz-default-settings $(1)/etc/uci-defaults/99-default-settings
+	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/i18n
+	po2lmo ./i18n/default.zh-cn.po $(1)/usr/lib/lua/luci/i18n/default.zh-cn.lmo
+	po2lmo ./i18n/more.zh-cn.po $(1)/usr/lib/lua/luci/i18n/more.zh-cn.lmo
+	po2lmo ./i18n/sqm.zh-cn.po $(1)/usr/lib/lua/luci/i18n/sqm.zh-cn.lmo
 endef
 
 $(eval $(call BuildPackage,default-settings))

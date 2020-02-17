@@ -225,9 +225,6 @@ add_firewall_rule() {
 	lan_ip=$(ifconfig br-lan | grep "inet addr" | awk '{print $2}' | awk -F : '{print $2}') #路由器lan IP
 	lan_ipv4=$(ip address show br-lan | grep -w "inet" | awk '{print $2}')                  #当前LAN IPv4段
 	[ -n "$lan_ipv4" ] && ipset -! add $IPSET_LANIPLIST $lan_ipv4 >/dev/null 2>&1 &
-
-	#  过滤所有节点IP
-	config_foreach filter_vpsip "nodes"
 	
 	$ipt_n -N PSW
 	$ipt_n -A PSW $(dst $IPSET_LANIPLIST) -j RETURN
@@ -273,7 +270,10 @@ add_firewall_rule() {
 			if [ "$node" != "nil" ]; then
 				local SOCKS5_NODE_PORT=$(config_get $node port)
 				local SOCKS5_NODE_IP=$(get_node_host_ip $node)
-				[ -n "$SOCKS5_NODE_IP" -a -n "$SOCKS5_NODE_PORT" ] && $ipt_n -A PSW -p tcp -d $SOCKS5_NODE_IP -m multiport --dports $SOCKS5_NODE_PORT -j RETURN
+				[ -n "$SOCKS5_NODE_IP" -a -n "$SOCKS5_NODE_PORT" ] && {
+					$ipt_n -A PSW -p tcp -d $SOCKS5_NODE_IP --dport $SOCKS5_NODE_PORT -j RETURN
+					$ipt_n -A PSW_OUTPUT -p tcp -d $SOCKS5_NODE_IP --dport $SOCKS5_NODE_PORT -j RETURN
+				}
 			fi
 		done
 	fi
@@ -289,7 +289,10 @@ add_firewall_rule() {
 				local TCP_NODE_PORT=$(config_get $node port)
 				local TCP_NODE_IP=$(get_node_host_ip $node)
 				local TCP_NODE_TYPE=$(echo $(config_get $node type) | tr 'A-Z' 'a-z')
-				[ -n "$TCP_NODE_IP" -a -n "$TCP_NODE_PORT" ] && $ipt_n -A PSW -p tcp -d $TCP_NODE_IP -m multiport --dports $TCP_NODE_PORT -j RETURN
+				[ -n "$TCP_NODE_IP" -a -n "$TCP_NODE_PORT" ] && {
+					$ipt_n -A PSW -p tcp -d $TCP_NODE_IP --dport $TCP_NODE_PORT -j RETURN
+					$ipt_n -A PSW_OUTPUT -p tcp -d $TCP_NODE_IP --dport $TCP_NODE_PORT -j RETURN
+				}
 				if [ "$TCP_NODE_TYPE" == "brook" ]; then
 					$ipt_m -A PSW_ACL -p tcp -m socket -j MARK --set-mark 1
 
@@ -378,9 +381,7 @@ add_firewall_rule() {
 						
 						$ipt_n -A PSW_OUTPUT -p tcp -m multiport --dport $TCP_REDIR_PORTS $(dst $IPSET_BLACKLIST) -j REDIRECT --to-ports $TCP_REDIR_PORT1
 						$ipt_n -A PSW_OUTPUT -p tcp -m multiport --dport $TCP_REDIR_PORTS $(dst $IPSET_ROUTER) -j REDIRECT --to-ports $TCP_REDIR_PORT1
-						[ "$LOCALHOST_PROXY_MODE" == "global" ] && $ipt_n -A PSW_OUTPUT -p tcp -m multiport --dport $TCP_REDIR_PORTS -j REDIRECT --to-ports $TCP_REDIR_PORT1
-						[ "$LOCALHOST_PROXY_MODE" == "gfwlist" ] && $ipt_n -A PSW_OUTPUT -p tcp -m multiport --dport $TCP_REDIR_PORTS $(dst $IPSET_GFW) -j REDIRECT --to-ports $TCP_REDIR_PORT1
-						[ "$LOCALHOST_PROXY_MODE" == "chnroute" ] && $ipt_n -A PSW_OUTPUT -p tcp -m multiport --dport $TCP_REDIR_PORTS -m set ! --match-set $IPSET_CHN dst -j REDIRECT --to-ports $TCP_REDIR_PORT1
+						$ipt_n -A PSW_OUTPUT -p tcp -m multiport --dport $TCP_REDIR_PORTS -j $(get_action_chain $LOCALHOST_PROXY_MODE)1
 					}
 					# 重定所有流量到透明代理端口
 					# $ipt_n -A PSW -p tcp -m ttl --ttl-eq $ttl -j REDIRECT --to $local_port
@@ -423,7 +424,10 @@ add_firewall_rule() {
 				local UDP_NODE_PORT=$(config_get $node port)
 				local UDP_NODE_IP=$(get_node_host_ip $node)
 				local UDP_NODE_TYPE=$(echo $(config_get $node type) | tr 'A-Z' 'a-z')
-				[ -n "$UDP_NODE_IP" -a -n "$UDP_NODE_PORT" ] && $ipt_m -A PSW -p udp -d $UDP_NODE_IP -m multiport --dports $UDP_NODE_PORT -j RETURN
+				[ -n "$UDP_NODE_IP" -a -n "$UDP_NODE_PORT" ] && {
+					$ipt_m -A PSW -p udp -d $UDP_NODE_IP --dport $UDP_NODE_PORT -j RETURN
+					$ipt_m -A PSW_OUTPUT -p udp -d $UDP_NODE_IP --dport $UDP_NODE_PORT -j RETURN
+				}
 				[ "$UDP_NODE_TYPE" == "brook" ] && $ipt_m -A PSW_ACL -p udp -m socket -j MARK --set-mark 1
 				#  全局模式
 				$ipt_m -A PSW_GLO$k -p udp -j TPROXY --tproxy-mark 0x1/0x1 --on-port $local_port
@@ -511,6 +515,9 @@ add_firewall_rule() {
 			$ipt_m -A PSW_ACL -p udp -m multiport --dport $UDP_REDIR_PORTS -m comment --comment "Default" -j $(get_action_chain $PROXY_MODE)1
 		}
 	fi
+	
+	#  过滤所有节点IP，暂时关闭，节点一多会解析很久导致启动超慢。。。
+	# config_foreach filter_vpsip "nodes"
 }
 
 del_firewall_rule() {
