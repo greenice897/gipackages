@@ -10,7 +10,7 @@
 4. 支持将服务公开至公网（默认监听局域网），支持开启严格模式
 5. 支持设定代理，支持指定网易云音乐服务器IP，支持设定EndPoint
 6. 支持手动/自动更新Core，确保插件正常运作
-7. 支持设定QQ Cookie/Youtube API，以正常使用相关音源
+7. 支持设定NeteaseMusic Cookie/QQ Cookie/Youtube API，以正常使用相关音源
 8. 支持在开启Adbyby/KoolProxy的环境下工作
 9. 支持无损音质（目前仅支持QQ、酷我、咪咕音源）
 
@@ -63,6 +63,7 @@
 ## 鸣谢
 ##### [UnblockNeteaseMusic](https://github.com/nondanee/UnblockNeteaseMusic)的开发者：[nondanee](https://github.com/nondanee)
 ##### [luci-app-unblockmusic](https://github.com/maxlicheng/luci-app-unblockmusic)的开发者：[maxlicheng](https://github.com/maxlicheng)
-##### IPSet劫持方式指导：[恩山692049#125楼](https://www.right.com.cn/forum/forum.php?mod=viewthread&tid=692049&page=9#pid4104303) [Lean](https://github.com/coolsnowwolf/lede/tree/master/package/lean/luci-app-unblockmusic) [rufengsuixing](https://github.com/rufengsuixing/luci-app-unblockmusic) [binsee](https://github.com/binsee/luci-app-unblockmusic)
+##### [luci-app-unblockmusic（二次修改）](https://github.com/coolsnowwolf/lede/tree/master/package/lean/luci-app-unblockmusic)的开发者：[Lean](https://github.com/coolsnowwolf)
+##### IPSet劫持方式指导：[恩山692049#125楼](https://www.right.com.cn/forum/forum.php?mod=viewthread&tid=692049&page=9#pid4104303) [rufengsuixing](https://github.com/rufengsuixing/luci-app-unblockmusic) [binsee](https://github.com/binsee/luci-app-unblockmusic)
 ##### Hosts劫持方式指导：[UnblockNeteaseMusic](https://github.com/nondanee/UnblockNeteaseMusic) [云音乐安卓又搞事啦](https://jixun.moe/post/netease-android-hosts-bypass/)
 ##### 核心程序版本检测方法指导：[vernesong](https://github.com/vernesong)
