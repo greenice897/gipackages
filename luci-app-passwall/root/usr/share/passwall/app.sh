@@ -21,7 +21,6 @@ LUA_API_PATH=/usr/lib/lua/luci/model/cbi/$CONFIG/api
 API_GEN_TROJAN=$LUA_API_PATH/gen_trojan.lua
 API_GEN_V2RAY=$LUA_API_PATH/gen_v2ray.lua
 API_GEN_V2RAY_SHUNT=$LUA_API_PATH/gen_v2ray_shunt.lua
-FWI=$(uci get firewall.passwall.path 2>/dev/null)
 
 echolog() {
 	local d="$(date "+%Y-%m-%d %H:%M:%S")"
@@ -204,17 +203,17 @@ load_config() {
 		if [ -n "$UP_CHINA_DNS1" ]; then
 			UP_CHINA_DNS=$UP_CHINA_DNS1
 		else
-			UP_CHINA_DNS="223.5.5.5"
+			UP_CHINA_DNS="119.29.29.29"
 		fi
 		local UP_CHINA_DNS2=$(cat $RESOLVFILE 2>/dev/null | grep -E -o "[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+" | grep -v 0.0.0.0 | grep -v 127.0.0.1 | sed -n '2P')
 		[ -n "$UP_CHINA_DNS1" -a -n "$UP_CHINA_DNS2" ] && UP_CHINA_DNS="$UP_CHINA_DNS1,$UP_CHINA_DNS2"
 	else
-		UP_CHINA_DNS1=$(echo $UP_CHINA_DNS | awk -F ',' '{print $1}')
+		UP_CHINA_DNS1=$(echo $UP_CHINA_DNS | sed "s/:/#/g" | awk -F ',' '{print $1}')
 		if [ -n "$UP_CHINA_DNS1" ]; then
-			UP_CHINA_DNS2=$(echo $UP_CHINA_DNS | awk -F ',' '{print $2}')
+			UP_CHINA_DNS2=$(echo $UP_CHINA_DNS | sed "s/:/#/g" | awk -F ',' '{print $2}')
 			[ -n "$UP_CHINA_DNS2" ] && UP_CHINA_DNS="${UP_CHINA_DNS1},${UP_CHINA_DNS2}"
 		else
-			UP_CHINA_DNS="223.5.5.5"
+			UP_CHINA_DNS="114.114.114.114"
 		fi
 	fi
 	PROXY_IPV6=$(config_t_get global_forwarding proxy_ipv6 0)
@@ -278,10 +277,10 @@ gen_start_config() {
 		# 判断节点服务器地址是否包含汉字~
 		local tmp=$(echo -n $server_host | awk '{print gensub(/[!-~]/,"","g",$0)}')
 		[ -n "$tmp" ] && {
-			echolog "$redir_type节点，非法的服务器地址，无法启动！"
+			echolog "${redir_type}_${5}节点，非法的服务器地址，无法启动！"
 			return 1
 		}
-		[ "$bind" == "0.0.0.0" ] && echolog "$redir_type节点：$remarks，节点：${server_host}:${port}，监听端口：$local_port"
+		[ "$bind" == "0.0.0.0" ] && echolog "${redir_type}_${5}节点：$remarks，节点：${server_host}:${port}，监听端口：$local_port"
 	}
 
 	if [ "$redir_type" == "SOCKS5" ]; then
@@ -551,7 +550,7 @@ stop_crontab() {
 	sed -i "/$CONFIG/d" /etc/crontabs/root >/dev/null 2>&1 &
 	ps | grep "$APP_PATH/test.sh" | grep -v "grep" | awk '{print $1}' | xargs kill -9 >/dev/null 2>&1 &
 	/etc/init.d/cron restart
-	echolog "清除定时执行命令。"
+	#echolog "清除定时执行命令。"
 }
 
 start_dns() {
@@ -574,16 +573,23 @@ start_dns() {
 	;;
 	pdnsd)
 		use_tcp_node_resolve_dns=1
-		gen_pdnsd_config $DNS_PORT 10240
+		gen_pdnsd_config $DNS_PORT 4096
 		DNS_FORWARD=$(echo $DNS_FORWARD | sed 's/,/ /g')
 		ln_start_bin $(find_bin pdnsd) pdnsd "--daemon -c $pdnsd_dir/pdnsd.conf -d"
 		echolog "DNS：pdnsd..."
 	;;
 	chinadns-ng)
 		other_port=$(expr $DNS_PORT + 1)
-		cat $RULES_PATH/gfwlist.conf | sort | uniq | sed -e '/127.0.0.1/d' | sed 's/ipset=\/.//g' | sed 's/\/gfwlist//g' > $TMP_PATH/gfwlist.txt
-		[ -f "$TMP_PATH/gfwlist.txt" ] && local gfwlist_param="-g $TMP_PATH/gfwlist.txt"
-		[ -f "$APP_PATH/chnlist" ] && local chnlist_param="-m $APP_PATH/chnlist"
+		[ -f "$RULES_PATH/gfwlist.conf" ] && cat $RULES_PATH/gfwlist.conf | sort | uniq | sed -e '/127.0.0.1/d' | sed 's/ipset=\/.//g' | sed 's/\/gfwlist//g' > $TMP_PATH/gfwlist.txt
+		[ -f "$TMP_PATH/gfwlist.txt" ] && {
+			[ -f "$RULES_PATH/blacklist_host" -a -s "$RULES_PATH/blacklist_host" ] && cat $RULES_PATH/blacklist_host >> $TMP_PATH/gfwlist.txt
+			local gfwlist_param="-g $TMP_PATH/gfwlist.txt"
+		}
+		[ -f "$RULES_PATH/chnlist" ] && cp -a $RULES_PATH/chnlist $TMP_PATH/chnlist
+		[ -f "$TMP_PATH/chnlist" ] && {
+			[ -f "$RULES_PATH/whitelist_host" -a -s "$RULES_PATH/whitelist_host" ] && cat $RULES_PATH/whitelist_host >> $TMP_PATH/chnlist
+			local chnlist_param="-m $TMP_PATH/chnlist -M"
+		}
 		
 		up_trust_chinadns_ng_dns=$(config_t_get global up_trust_chinadns_ng_dns "pdnsd")
 		if [ "$up_trust_chinadns_ng_dns" == "pdnsd" ]; then
@@ -620,15 +626,16 @@ start_dns() {
 
 add_dnsmasq() {
 	mkdir -p $TMP_DNSMASQ_PATH $DNSMASQ_PATH /var/dnsmasq.d
-	cat $RULES_PATH/whitelist_host | sed -e "/^$/d" | sed "s/^/ipset=&\/./g" | sed "s/$/\/&whitelist/g" | sort | awk '{if ($0!=line) print;line=$0}' > $TMP_DNSMASQ_PATH/whitelist_host.conf
-
 	local adblock=$(config_t_get global_rules adblock 0)
 	[ "$adblock" == "1" ] && {
 		[ -f "$RULES_PATH/adblock.conf" -a -s "$RULES_PATH/adblock.conf" ] && ln -s $RULES_PATH/adblock.conf $TMP_DNSMASQ_PATH/adblock.conf
 	}
-
+	
 	[ "$DNS_MODE" != "nonuse" ] && {
-		[ -f "$RULES_PATH/blacklist_host" -a -s "$RULES_PATH/blacklist_host" ] && cat $RULES_PATH/blacklist_host | sed -e "/^$/d" | awk '{print "server=/."$1"/127.0.0.1#'$DNS_PORT'\nipset=/."$1"/blacklist"}' > $TMP_DNSMASQ_PATH/blacklist_host.conf
+		local dns2="$UP_CHINA_DNS2"
+		[ -z "$dns2" ] && dns2="114.114.114.114"
+		[ -f "$RULES_PATH/whitelist_host" -a -s "$RULES_PATH/whitelist_host" ] && cat $RULES_PATH/whitelist_host | sed -e "/^$/d" | sort | awk '{print "server=/."$1"/'$UP_CHINA_DNS1'\nserver=/."$1"/'$dns2'\nipset=/."$1"/whitelist"}' > $TMP_DNSMASQ_PATH/whitelist_host.conf
+		[ -f "$RULES_PATH/blacklist_host" -a -s "$RULES_PATH/blacklist_host" ] && cat $RULES_PATH/blacklist_host | sed -e "/^$/d" | sort | awk '{print "server=/."$1"/127.0.0.1#'$DNS_PORT'\nipset=/."$1"/blacklist"}' > $TMP_DNSMASQ_PATH/blacklist_host.conf
 		[ -f "$RULES_PATH/gfwlist.conf" -a -s "$RULES_PATH/gfwlist.conf" ] && ln -s $RULES_PATH/gfwlist.conf $TMP_DNSMASQ_PATH/gfwlist.conf
 		
 		subscribe_proxy=$(config_t_get global_subscribe subscribe_proxy 0)
@@ -645,11 +652,11 @@ add_dnsmasq() {
 					local url=$(u_get $i url)
 					[ -n "$url" -a "$url" != "" ] && {
 						if [ -n "$(echo -n "$url" | grep "//")" ]; then
-							echo -n "$url" | awk -F'/' '{print $3}' | sed "s/^/server=&\/./g" | sed "s/$/\/127.0.0.1#$DNS_PORT/g" >>$TMP_DNSMASQ_PATH/subscribe.conf
-							echo -n "$url" | awk -F'/' '{print $3}' | sed "s/^/ipset=&\/./g" | sed "s/$/\/blacklist/g" >>$TMP_DNSMASQ_PATH/subscribe.conf
+							echo -n "$url" | awk -F '/' '{print $3}' | sed "s/^/server=&\/./g" | sed "s/$/\/127.0.0.1#$DNS_PORT/g" >>$TMP_DNSMASQ_PATH/subscribe.conf
+							echo -n "$url" | awk -F '/' '{print $3}' | sed "s/^/ipset=&\/./g" | sed "s/$/\/blacklist/g" >>$TMP_DNSMASQ_PATH/subscribe.conf
 						else
-							echo -n "$url" | awk -F'/' '{print $1}' | sed "s/^/server=&\/./g" | sed "s/$/\/127.0.0.1#$DNS_PORT/g" >>$TMP_DNSMASQ_PATH/subscribe.conf
-							echo -n "$url" | awk -F'/' '{print $1}' | sed "s/^/ipset=&\/./g" | sed "s/$/\/blacklist/g" >>$TMP_DNSMASQ_PATH/subscribe.conf
+							echo -n "$url" | awk -F '/' '{print $1}' | sed "s/^/server=&\/./g" | sed "s/$/\/127.0.0.1#$DNS_PORT/g" >>$TMP_DNSMASQ_PATH/subscribe.conf
+							echo -n "$url" | awk -F '/' '{print $1}' | sed "s/^/ipset=&\/./g" | sed "s/$/\/blacklist/g" >>$TMP_DNSMASQ_PATH/subscribe.conf
 						fi
 					}
 				done
@@ -661,13 +668,13 @@ add_dnsmasq() {
 		server="server=127.0.0.1#$DNS_PORT"
 		[ "$DNS_MODE" != "chinadns-ng" ] && {
 			[ -n "$UP_CHINA_DNS1" ] && server="server=$UP_CHINA_DNS1"
-			[ -n "$UP_CHINA_DNS2" ] && server="${server}\n${UP_CHINA_DNS2}"
-			server="${server}\nno-resolv"
+			[ -n "$UP_CHINA_DNS2" ] && server="${server}\nserver=${UP_CHINA_DNS2}"
 		}
 		cat <<-EOF > /var/dnsmasq.d/dnsmasq-$CONFIG.conf
 			$(echo -e $server)
 			all-servers
 			no-poll
+			no-resolv
 		EOF
 	}
 	
@@ -866,28 +873,6 @@ start_haproxy() {
 	}
 }
 
-flush_include() {
-	echo '#!/bin/sh' >$FWI
-}
-
-gen_include() {
-	flush_include
-	extract_rules() {
-		echo "*$1"
-		iptables-save -t $1 | grep PSW | \
-		sed -e "s/^-A \(OUTPUT\|PREROUTING\)/-I \1 1/"
-		echo 'COMMIT'
-	}
-	cat <<-EOF >>$FWI
-		iptables-save -c | grep -v "PSW" | iptables-restore -c
-		iptables-restore -n <<-EOT
-		$(extract_rules nat)
-		$(extract_rules mangle)
-		EOT
-	EOF
-	return 0
-}
-
 kill_all() {
 	kill -9 $(pidof $@) >/dev/null 2>&1 &
 }
@@ -921,10 +906,9 @@ start() {
 	start_dns
 	add_dnsmasq
 	source $APP_PATH/iptables.sh start
-	gen_include
 	/etc/init.d/dnsmasq restart >/dev/null 2>&1 &
-	echolog "运行完成！\n"
 	start_crontab
+	echolog "运行完成！\n"
 	rm -f "$LOCK_FILE"
 	return 0
 }
@@ -942,15 +926,15 @@ stop() {
 	done
 	clean_log
 	source $APP_PATH/iptables.sh stop
-	flush_include
 	kill_all v2ray-plugin obfs-local
 	ps -w | grep -v "grep" | grep $CONFIG/test.sh | awk '{print $1}' | xargs kill -9 >/dev/null 2>&1 &
 	ps -w | grep -v "grep" | grep $CONFIG/monitor.sh | awk '{print $1}' | xargs kill -9 >/dev/null 2>&1 &
 	ps -w | grep -v "grep" | grep -E "$TMP_PATH" | awk '{print $1}' | xargs kill -9 >/dev/null 2>&1 &
+	ps -w | grep -v "grep" | grep "sleep 1m" | awk '{print $1}' | xargs kill -9 >/dev/null 2>&1 &
 	rm -rf $TMP_DNSMASQ_PATH $TMP_PATH
 	stop_dnsmasq
 	stop_crontab
-	echolog "关闭相关程序，清理相关文件和缓存完成。"
+	echolog "清空并关闭相关程序和缓存完成。"
 }
 
 case $1 in
