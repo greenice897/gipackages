@@ -14,7 +14,7 @@ local routing = nil
 local function gen_outbound(node, tag)
     local result = nil
     if node then
-        local cbi_id = node[".name"]
+        local node_id = node[".name"]
         if node.type ~= "V2ray" then
             if node.type == "Socks5" then
                 node.v2ray_protocol = "socks"
@@ -27,9 +27,9 @@ local function gen_outbound(node, tag)
                 node.port = new_port
                 sys.call(string.format(
                              "/usr/share/passwall/app.sh gen_start_config %s %s %s %s %s %s",
-                             cbi_id, new_port, "SOCKS5",
+                             node_id, new_port, "SOCKS5",
                              "/var/etc/passwall/v2_shunt_" .. node_type .. "_" ..
-                                 cbi_id .. ".json", "4", "127.0.0.1"))
+                                 node_id .. ".json", "4", "127.0.0.1"))
                 node.v2ray_protocol = "socks"
                 node.v2ray_transport = "tcp"
                 node.address = "127.0.0.1"
@@ -37,7 +37,6 @@ local function gen_outbound(node, tag)
         end
         result = {
             tag = tag,
-            cbi_id = cbi_id,
             protocol = node.v2ray_protocol or "vmess",
             mux = {
                 enabled = (node.v2ray_mux == "1") and true or false,
@@ -45,7 +44,7 @@ local function gen_outbound(node, tag)
                     tonumber(node.v2ray_mux_concurrency) or 8
             },
             -- 底层传输配置
-            streamSettings = {
+            streamSettings = (node.v2ray_protocol == "vmess") and {
                 network = node.v2ray_transport,
                 security = node.v2ray_stream_security,
                 tlsSettings = (node.v2ray_stream_security == "tls") and {
@@ -91,7 +90,7 @@ local function gen_outbound(node, tag)
                     key = node.v2ray_quic_key,
                     header = {type = node.v2ray_quic_guise}
                 } or nil
-            },
+            } or nil,
             settings = {
                 vnext = (node.v2ray_protocol == "vmess") and {
                     {
@@ -114,16 +113,6 @@ local function gen_outbound(node, tag)
                         users = (node.username and node.password) and
                             {{user = node.username, pass = node.password}} or
                             nil
-                    }
-                } or (node.v2ray_protocol == "ss") and {
-                    {
-                        email = nil,
-                        address = node.address,
-                        method = nil,
-                        ota = nil,
-                        password = node.password or nil,
-                        port = tonumber(node.port),
-                        level = 1
                     }
                 } or nil
             }

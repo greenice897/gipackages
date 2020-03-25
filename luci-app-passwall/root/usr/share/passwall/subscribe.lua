@@ -82,6 +82,17 @@ do
 	end
 end
 
+-- 判断是否过滤节点关键字
+local filter_keyword_table = ucic2:get(application, "@global_subscribe[0]", "filter_keyword")
+local function is_filter_keyword(value)
+	for k,v in ipairs(filter_keyword_table) do
+	  if value:find(v) then
+          return true
+      end
+    end
+    return false
+end
+
 -- 分割字符串
 local function split(full, sep)
 	if full then
@@ -188,6 +199,9 @@ local function processData(szType, content, add_mode)
 			result.v2ray_h2_path = info.path
 		end
 		if info.net == 'tcp' then
+			if info.type and info.type ~= "http" then
+				info.type = "none"
+			end
 			result.v2ray_tcp_guise = info.type
 			result.v2ray_tcp_guise_http_host = info.host
 			result.v2ray_tcp_guise_http_path = info.path
@@ -249,6 +263,9 @@ local function processData(szType, content, add_mode)
 					result.ss_plugin = plugin_info
 				end
 			end
+			if result.ss_plugin and result.ss_plugin == "simple-obfs" then
+				result.ss_plugin = "obfs-local"
+			end
 		else
 			result.port = host[2]
 		end
@@ -302,8 +319,7 @@ local function processData(szType, content, add_mode)
 		result.group = content.airport
 		result.remarks = content.remarks
 	else
-		log('暂时不支持' .. szType ..
-				"类型的节点订阅，跳过此节点。")
+		log('暂时不支持' .. szType .. "类型的节点订阅，跳过此节点。")
 		return nil
 	end
 	if not result.remarks then
@@ -313,7 +329,8 @@ local function processData(szType, content, add_mode)
 end
 -- wget
 local function wget(url)
-	local stdout = luci.sys.exec('/usr/bin/wget --user-agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.122 Safari/537.36" --no-check-certificate -t 3 -T 10 -O- "' .. url .. '"')
+	local ua = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.122 Safari/537.36"
+	local stdout = luci.sys.exec('/usr/bin/wget --user-agent="' .. ua .. '" --no-check-certificate -t 3 -T 10 -O- "' .. url .. '"')
 	return trim(stdout)
 end
 
@@ -351,31 +368,59 @@ end
 
 local function select_node(nodes, config)
 	local server
+	-- 特别优先级 V2ray分流 + 备注
+	if config.currentNode.type == 'V2ray_shunt' then
+		for id, node in pairs(nodes) do
+			if node.remarks == config.currentNode.remarks then
+				log('选择【' .. config.remarks .. '】V2ray分流匹配节点：' .. node.remarks)
+				server = id
+				break
+			end
+		end
+	end
+	-- 特别优先级 V2ray负载均衡 + 备注
+	if config.currentNode.type == 'V2ray_balancing' then
+		for id, node in pairs(nodes) do
+			if node.remarks == config.currentNode.remarks then
+				log('选择【' .. config.remarks .. '】V2ray负载均衡匹配节点：' .. node.remarks)
+				server = id
+				break
+			end
+		end
+	end
 	-- 第一优先级 IP + 端口
-	for id, node in pairs(nodes) do
-		if node.address .. ':' .. node.port == config.currentNode.address .. ':' .. config.currentNode.port then
-			log('选择【' .. config.remarks .. '】第一匹配节点：' .. node.remarks)
-			server = id
-			break
+	if not server then
+		for id, node in pairs(nodes) do
+			if node.address and node.port then
+				if node.address .. ':' .. node.port == config.currentNode.address .. ':' .. config.currentNode.port then
+					log('选择【' .. config.remarks .. '】第一匹配节点：' .. node.remarks)
+					server = id
+					break
+				end
+			end
 		end
 	end
 	-- 第二优先级 IP
 	if not server then
 		for id, node in pairs(nodes) do
-			if node.address == config.currentNode.address then
-				log('选择【' .. config.remarks .. '】第二匹配节点：' .. node.remarks)
-				server = id
-				break
+			if node.address then
+				if node.address == config.currentNode.address then
+					log('选择【' .. config.remarks .. '】第二匹配节点：' .. node.remarks)
+					server = id
+					break
+				end
 			end
 		end
 	end
 	-- 第三优先级备注
 	if not server then
 		for id, node in pairs(nodes) do
-			if node.remarks == config.currentNode.remarks then
-				log('选择【' .. config.remarks .. '】第三匹配节点：' .. node.remarks)
-				server = id
-				break
+			if node.remarks then
+				if node.remarks == config.currentNode.remarks then
+					log('选择【' .. config.remarks .. '】第三匹配节点：' .. node.remarks)
+					server = id
+					break
+				end
 			end
 		end
 	end
@@ -427,14 +472,14 @@ local function update_node(manual)
 		local nodes = {}
 		local ucic3 = uci.cursor()
 		ucic3:foreach(application, uciType, function(node)
-			if node.port and node.address and node.remarks then
+			if (node.port and node.address and node.remarks) or node.type == 'V2ray_shunt' or node.type == 'V2ray_balancing' then
 				nodes[node['.name']] = node
 			end
 		end)
 		for _, config in pairs(CONFIG) do
 			select_node(nodes, config)
 		end
-		ucic3:commit(application)
+		ucic2:commit(application)
 		luci.sys.call("/etc/init.d/" .. application .. " restart > /dev/null 2>&1 &") -- 不加&的话日志会出现的更早
 	end
 end
@@ -495,10 +540,8 @@ local function parse_link(raw, remark, manual)
 				end
 				-- log(result)
 				if result then
-					if result.remarks:find("过期时间") or
-						result.remarks:find("剩余流量") or
-						result.remarks:find("QQ群") or
-						result.remarks:find("官网") or not result.address or
+					if is_filter_keyword(result.remarks) or
+						not result.address or
 						result.address:match("[^0-9a-zA-Z%-%_%.%s]") or -- 中文做地址的 也没有人拿中文域名搞，就算中文域也有Puny Code SB 机场
 						not result.address:find("%.") or -- 虽然没有.也算域，不过应该没有人会这样干吧
 						result.address:sub(#result.address) == "." -- 结尾是.
@@ -548,7 +591,7 @@ if arg[1] then
 			end)
 			log('订阅完毕...')
 		else
-			log('未设置或启用订阅, 请检查设置...')
+			log('未设置订阅或未启用订阅, 请检查设置...')
 		end
 	elseif arg[1] == "add" then
 		local f = assert(io.open("/tmp/links.conf", 'r'))
