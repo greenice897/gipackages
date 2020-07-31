@@ -5,5 +5,6 @@ function index()
 		return
 	end
 	
-	local page = entry({"admin", "network", "guest-wifi"}, cbi("guest-wifi"), translate("Guest-wifi"), 16)
+	local page = entry({"admin", "network", "guest-wifi"}, cbi("guest-wifi"), translate("Guest-wifi"), 19)
+	
 end
