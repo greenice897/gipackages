@@ -10,3 +10,5 @@ then run:
 Or 
 
 run: "git clone https://github.com/greenice897/gipackages.git openwrt/package/greenice"
+
+ETC..
