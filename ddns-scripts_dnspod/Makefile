@@ -28,8 +28,6 @@ define Build/Configure
 endef
 
 define Build/Compile
-	$(CP) ./*.sh $(PKG_BUILD_DIR)
-	$(CP) ./*.json $(PKG_BUILD_DIR)
 endef
 
 define Package/$(PKG_NAME)/preinst
@@ -41,34 +39,18 @@ endef
 
 define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)/usr/lib/ddns
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/*.sh $(1)/usr/lib/ddns
+	$(INSTALL_BIN) ./files/usr/lib/ddns/* $(1)/usr/lib/ddns
 	$(INSTALL_DIR) $(1)/usr/share/ddns/default
-	$(CP) $(PKG_BUILD_DIR)/*.json $(1)/usr/share/ddns/default
+	$(INSTALL_DATA) ./files/usr/share/ddns/default/* $(1)/usr/share/ddns/default
 endef
 
 define Package/$(PKG_NAME)/postinst
 	#!/bin/sh
-	# remove old services file entries
-	/bin/sed -i '/dnspod\.com/d' $${IPKG_INSTROOT}/usr/share/ddns/list >/dev/null 2>&1
-	/bin/sed -i '/dnspod\.cn/d' $${IPKG_INSTROOT}/usr/share/ddns/list >/dev/null 2>&1
-	# and create new
-	printf "%s\\n" 'dnspod.com' >> $${IPKG_INSTROOT}/usr/share/ddns/list
-	printf "%s\\n" 'dnspod.cn' >> $${IPKG_INSTROOT}/usr/share/ddns/list
 	# on real system restart service if enabled
 	[ -z "$${IPKG_INSTROOT}" ] && {
 		/etc/init.d/ddns enabled && \
 			/etc/init.d/ddns start >/dev/null 2>&1
 	}
-	exit 0 # suppress errors
-endef
-
-define Package/$(PKG_NAME)/prerm
-	#!/bin/sh
-	# if NOT run buildroot then stop service
-	[ -z "$${IPKG_INSTROOT}" ] && /etc/init.d/ddns stop >/dev/null 2>&1
-	# remove services file entries
-	/bin/sed -i '/dnspod\.com/d' $${IPKG_INSTROOT}/usr/share/ddns/list >/dev/null 2>&1
-	/bin/sed -i '/dnspod\.cn/d' $${IPKG_INSTROOT}/usr/share/ddns/list >/dev/null 2>&1
 	exit 0 # suppress errors
 endef
 
