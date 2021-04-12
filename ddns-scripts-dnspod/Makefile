@@ -1,8 +1,8 @@
 include $(TOPDIR)/rules.mk
 
-PKG_NAME:=ddns-scripts_dnspod
+PKG_NAME:=ddns-scripts-dnspod
 PKG_VERSION:=1.0.3
-PKG_RELEASE:=1
+PKG_RELEASE:=5
 
 PKG_LICENSE:=GPLv2
 PKG_MAINTAINER:=Small_5
@@ -17,7 +17,7 @@ define Package/$(PKG_NAME)
 	SUBMENU:=IP Addresses and Names
 	TITLE:=DDNS extension for Dnspod.com/Dnspod.cn
 	PKGARCH:=all
-	DEPENDS:=+ddns-scripts +wget +ca-certificates
+	DEPENDS:=+ddns-scripts +curl +jsonfilter
 endef
 
 define Package/$(PKG_NAME)/description
@@ -28,29 +28,28 @@ define Build/Configure
 endef
 
 define Build/Compile
-endef
-
-define Package/$(PKG_NAME)/preinst
-	#!/bin/sh
-	# if NOT run buildroot then stop service
-	[ -z "$${IPKG_INSTROOT}" ] && /etc/init.d/ddns stop >/dev/null 2>&1
-	exit 0 # suppress errors
+	$(CP) ./*.sh $(PKG_BUILD_DIR)
+	# remove comments, white spaces and empty lines
+	for FILE in `find $(PKG_BUILD_DIR) -type f`; do \
+		$(SED) 's/^[[:space:]]*//' \
+		-e '/^#[[:space:]]\|^#$$$$/d' \
+		-e 's/[[:space:]]#[[:space:]].*$$$$//' \
+		-e 's/[[:space:]]*$$$$//' \
+		-e '/^\/\/[[:space:]]/d'	\
+		-e '/^[[:space:]]*$$$$/d'	$$$$FILE; \
+	done
 endef
 
 define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)/usr/lib/ddns
-	$(INSTALL_BIN) ./files/usr/lib/ddns/* $(1)/usr/lib/ddns
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/*.sh $(1)/usr/lib/ddns
 	$(INSTALL_DIR) $(1)/usr/share/ddns/default
-	$(INSTALL_DATA) ./files/usr/share/ddns/default/* $(1)/usr/share/ddns/default
+	$(INSTALL_DATA) ./*.json $(1)/usr/share/ddns/default
 endef
 
-define Package/$(PKG_NAME)/postinst
+define Package/$(PKG_NAME)/prerm
 	#!/bin/sh
-	# on real system restart service if enabled
-	[ -z "$${IPKG_INSTROOT}" ] && {
-		/etc/init.d/ddns enabled && \
-			/etc/init.d/ddns start >/dev/null 2>&1
-	}
+	[ -z "$${IPKG_INSTROOT}" ] && /etc/init.d/ddns stop >/dev/null 2>&1
 	exit 0 # suppress errors
 endef
 
