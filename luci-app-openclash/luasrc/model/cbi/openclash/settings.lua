@@ -60,10 +60,6 @@ o:depends("en_mode", "redir-host")
 o:depends("en_mode", "fake-ip")
 o.default=1
 
-o = s:taboption("op_mode", Flag, "disable_udp_quic", font_red..bold_on..translate("Disable quic")..bold_off..font_off)
-o.description = translate("Disable yt fb ig use quic")..", "..font_red..bold_on..translate("REJECT PORT 443 UDP")..bold_off..font_off
-o.default=1
-
 o = s:taboption("op_mode", ListValue, "stack_type", translate("Select Stack Type"))
 o.description = translate("Select Stack Type For TUN Mode, According To The Running Speed on Your Machine")
 o:depends("en_mode", "redir-host-tun")
@@ -81,6 +77,10 @@ o:value("global", translate("Global Proxy Mode"))
 o:value("direct", translate("Direct Proxy Mode"))
 o:value("script", translate("Script Proxy Mode (Tun Core Only)"))
 o.default = "rule"
+
+o = s:taboption("op_mode", Flag, "disable_udp_quic", font_red..bold_on..translate("Disable QUIC")..bold_off..font_off)
+o.description = translate("Prevent YouTube and Others To Use QUIC Transmission")..", "..font_red..bold_on..translate("REJECT UDP Traffic On Port 443")..bold_off..font_off
+o.default=1
 
 o = s:taboption("op_mode", Flag, "enable_rule_proxy", font_red..bold_on..translate("Rule Match Proxy Mode")..bold_off..font_off)
 o.description = translate("Only Proxy Rules Match, Prevent BT/P2P Passing")
@@ -236,7 +236,6 @@ function custom_fake_black.cfgvalue(self, section)
 	return NXFS.readfile("/etc/openclash/custom/openclash_custom_fake_filter.list") or ""
 end
 function custom_fake_black.write(self, section, value)
-
 	if value then
 		value = value:gsub("\r\n?", "\n")
 		local old_value = NXFS.readfile("/etc/openclash/custom/openclash_custom_fake_filter.list")
@@ -264,12 +263,31 @@ function custom_domain_dns.cfgvalue(self, section)
 	return NXFS.readfile("/etc/openclash/custom/openclash_custom_domain_dns.list") or ""
 end
 function custom_domain_dns.write(self, section, value)
-
 	if value then
 		value = value:gsub("\r\n?", "\n")
 		local old_value = NXFS.readfile("/etc/openclash/custom/openclash_custom_domain_dns.list")
 	  if value ~= old_value then
 			NXFS.writefile("/etc/openclash/custom/openclash_custom_domain_dns.list", value)
+		end
+	end
+end
+
+custom_domain_dns_policy = s:taboption("dns", Value, "custom_domain_dns_core")
+custom_domain_dns_policy.template = "cbi/tvalue"
+custom_domain_dns_policy.description = translate("Domain Names In The List Use The Custom DNS Server, But Still Return Fake-IP Results, One rule per line")
+custom_domain_dns_policy.rows = 20
+custom_domain_dns_policy.wrap = "off"
+custom_domain_dns_policy:depends("dns_advanced_setting", "1")
+
+function custom_domain_dns_policy.cfgvalue(self, section)
+	return NXFS.readfile("/etc/openclash/custom/openclash_custom_domain_dns_policy.list") or ""
+end
+function custom_domain_dns_policy.write(self, section, value)
+	if value then
+		value = value:gsub("\r\n?", "\n")
+		local old_value = NXFS.readfile("/etc/openclash/custom/openclash_custom_domain_dns_policy.list")
+	  if value ~= old_value then
+			NXFS.writefile("/etc/openclash/custom/openclash_custom_domain_dns_policy.list", value)
 		end
 	end
 end

@@ -28,6 +28,31 @@ local v2_tj = luci.sys.exec('type -t -p trojan') ~= "" and "trojan" or "v2ray"
 local log = function(...)
 	print(os.date("%Y-%m-%d %H:%M:%S ") .. table.concat({...}, " "))
 end
+local encrypt_methods_ss = {
+	-- aead
+	"aes-128-gcm",
+	"aes-192-gcm",
+	"aes-256-gcm",
+	"chacha20-ietf-poly1305",
+	"xchacha20-ietf-poly1305"
+	--[[ stream
+	"table",
+	"rc4",
+	"rc4-md5",
+	"aes-128-cfb",
+	"aes-192-cfb",
+	"aes-256-cfb",
+	"aes-128-ctr",
+	"aes-192-ctr",
+	"aes-256-ctr",
+	"bf-cfb",
+	"camellia-128-cfb",
+	"camellia-192-cfb",
+	"camellia-256-cfb",
+	"salsa20",
+	"chacha20",
+	"chacha20-ietf" ]]
+}
 -- 分割字符串
 local function split(full, sep)
 	full = full:gsub("%z", "") -- 这里不是很清楚 有时候结尾带个\0
@@ -95,6 +120,15 @@ local function base64Decode(text)
 	else
 		return raw
 	end
+end
+-- 检查数组(table)中是否存在某个字符值
+-- https://www.04007.cn/article/135.html
+local function checkTabValue(tab)
+	local revtab = {}
+	for k,v in pairs(tab) do
+		revtab[v] = true
+	end
+	return revtab
 end
 -- 处理数据
 local function processData(szType, content)
@@ -209,8 +243,13 @@ local function processData(szType, content)
 		else
 			result.server_port = host[2]
 		end
-		result.encrypt_method_ss = method
-		result.password = password
+		if checkTabValue(encrypt_methods_ss)[method] then
+			result.encrypt_method_ss = method
+			result.password = password
+		else
+			-- 1202 年了还不支持 SS AEAD 的屑机场
+			result.server = nil
+		end
 	elseif szType == "ssd" then
 		result.type = "ss"
 		result.server = content.server
@@ -220,6 +259,10 @@ local function processData(szType, content)
 		result.plugin = content.plugin
 		result.plugin_opts = content.plugin_options
 		result.alias = "[" .. content.airport .. "] " .. content.remarks
+		if checkTabValue(encrypt_methods_ss)[result.encrypt_method_ss] then
+			-- 1202 年了还不支持 SS AEAD 的屑机场
+			result.server = nil
+		end
 	elseif szType == "trojan" then
 		local idx_sp = 0
 		local alias = ""
@@ -284,7 +327,7 @@ local function processData(szType, content)
 			if not params.type or params.type == "tcp" then
 				if params.security == "xtls" then
 					result.xtls = "1"
-					result.tls_host = params.sni or host[1]
+					result.tls_host = params.sni
 					result.vless_flow = params.flow
 				else
 					result.xtls = "0"
@@ -295,7 +338,7 @@ local function processData(szType, content)
 				result.ws_path = params.path or "/"
 			end
 			if params.type == 'http' then
-				result.h2_host = params.host or host[1]
+				result.h2_host = params.host
 				result.h2_path = params.path or "/"
 			end
 			if params.type == 'kcp' then
@@ -313,9 +356,13 @@ local function processData(szType, content)
 				result.quic_key = params.key
 				result.quic_security = params.quicSecurity or "none"
 			end
+			if params.type == 'grpc' then
+				result.serviceName = params.serviceName
+			end
+			
 			if params.security == "tls" then
 				result.tls = "1"
-				result.tls_host = params.sni or host[1]
+				result.tls_host = params.sni
 			else
 				result.tls = "0"
 			end
@@ -415,7 +462,7 @@ local execute = function()
 						-- log(result)
 						if result then
 							-- 中文做地址的 也没有人拿中文域名搞，就算中文域也有Puny Code SB 机场
-							if not result.server or not result.server_port or result.alias == "NULL" or check_filer(result) or result.server:match("[^0-9a-zA-Z%-%.%s]") then
+							if not result.server or not result.server_port or result.alias == "NULL" or check_filer(result) or result.server:match("[^0-9a-zA-Z%-%.%s]") or cache[groupHash][result.hashkey] then
 								log('丢弃无效节点: ' .. result.type .. ' 节点, ' .. result.alias)
 							else
 								-- log('成功解析: ' .. result.type ..' 节点, ' .. result.alias)
