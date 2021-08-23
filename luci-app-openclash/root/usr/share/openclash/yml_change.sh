@@ -2,8 +2,7 @@
 . /usr/share/openclash/ruby.sh
 
 LOG_FILE="/tmp/openclash.log"
-START_LOG="/tmp/openclash_start.log"
-LOGTIME=$(date "+%Y-%m-%d %H:%M:%S")
+LOGTIME=$(echo $(date "+%Y-%m-%d %H:%M:%S"))
 dns_advanced_setting=$(uci -q get openclash.config.dns_advanced_setting)
 
 if [ "${14}" != "1" ]; then
@@ -63,10 +62,11 @@ ruby -ryaml -E UTF-8 -e "
 begin
    Value = YAML.load_file('$7');
 rescue Exception => e
-   puts '${LOGTIME} Load File Error: ' + e.message
+   puts '${LOGTIME} Error: Load File Error,【' + e.message + '】'
 end
 begin
    Value['redir-port']=$6;
+   Value['tproxy-port']=${20};
    Value['port']=$9;
    Value['socks-port']=${10};
    Value['mixed-port']=${19};
@@ -123,7 +123,7 @@ else
    Value['profile']['store-selected']=true
 end;
 rescue Exception => e
-puts '${LOGTIME} Set General Error: ' + e.message
+puts '${LOGTIME} Error: Set General Error,【' + e.message + '】'
 end
 begin
 #添加自定义Hosts设置
@@ -142,7 +142,7 @@ if '$2' == 'redir-host' then
    end
 end;
 rescue Exception => e
-puts '${LOGTIME} Set Hosts Rules Error: ' + e.message
+puts '${LOGTIME} Error: Set Hosts Rules Error,【' + e.message + '】'
 end
 begin
 #fake-ip-filter
@@ -161,7 +161,7 @@ if '$2' == 'fake-ip' then
   end
 end;
 rescue Exception => e
-puts '${LOGTIME} Set Fake IP Filter Error: ' + e.message
+puts '${LOGTIME} Error: Set Fake-IP-Filter Error,【' + e.message + '】'
 end
 begin
 #nameserver-policy
@@ -179,7 +179,7 @@ if '$dns_advanced_setting' == '1' then
   end
 end;
 rescue Exception => e
-puts '${LOGTIME} Set Nameserver-policy Error: ' + e.message
+puts '${LOGTIME} Error: Set Nameserver-Policy Error,【' + e.message + '】'
 ensure
 File.open('$7','w') {|f| YAML.dump(Value, f)}
 end" 2>/dev/null >> $LOG_FILE
