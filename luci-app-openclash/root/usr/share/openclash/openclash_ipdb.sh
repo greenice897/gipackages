@@ -14,6 +14,7 @@
 
    small_flash_memory=$(uci get openclash.config.small_flash_memory 2>/dev/null)
    GEOIP_CUSTOM_URL=$(uci get openclash.config.geo_custom_url 2>/dev/null)
+   github_address_mod=$(uci -q get openclash.config.github_address_mod || echo 0)
    set_lock
    
    if [ "$small_flash_memory" != "1" ]; then
@@ -25,14 +26,17 @@
    fi
    LOG_OUT "Start Downloading Geoip Database..."
    if [ -z "$GEOIP_CUSTOM_URL" ]; then
-      if pidof clash >/dev/null; then
-         curl -sL --connect-timeout 10 --retry 2 https://raw.githubusercontent.com/alecthw/mmdb_china_ip_list/release/lite/Country.mmdb -o /tmp/Country.mmdb >/dev/null 2>&1
-      fi
-      if [ "$?" -ne "0" ] || ! pidof clash >/dev/null; then
-         curl -sL --connect-timeout 10 --retry 2 https://cdn.jsdelivr.net/gh/alecthw/mmdb_china_ip_list@release/lite/Country.mmdb -o /tmp/Country.mmdb >/dev/null 2>&1
+      if [ "$github_address_mod" != "0" ]; then
+         if [ "$github_address_mod" == "https://cdn.jsdelivr.net/" ]; then
+            curl -sL --connect-timeout 5 -m 30 --speed-time 15 --speed-limit 1 --retry 2 https://cdn.jsdelivr.net/gh/alecthw/mmdb_china_ip_list@release/lite/Country.mmdb -o /tmp/Country.mmdb >/dev/null 2>&1
+         else
+            curl -sL --connect-timeout 5 -m 30 --speed-time 15 --speed-limit 1 --retry 2 "$github_address_mod"https://raw.githubusercontent.com/alecthw/mmdb_china_ip_list/release/lite/Country.mmdb -o /tmp/Country.mmdb >/dev/null 2>&1
+         fi
+      else
+         curl -sL --connect-timeout 5 -m 30 --speed-time 15 --speed-limit 1 --retry 2 https://raw.githubusercontent.com/alecthw/mmdb_china_ip_list/release/lite/Country.mmdb -o /tmp/Country.mmdb >/dev/null 2>&1
       fi
    else
-      curl -sL --connect-timeout 10 --retry 2 "$GEOIP_CUSTOM_URL" -o /tmp/Country.mmdb >/dev/null 2>&1
+      curl -sL --connect-timeout 5 -m 30 --speed-time 15 --speed-limit 1 --retry 2 "$GEOIP_CUSTOM_URL" -o /tmp/Country.mmdb >/dev/null 2>&1
    fi
    if [ "$?" -eq "0" ] && [ -s "/tmp/Country.mmdb" ]; then
       LOG_OUT "Geoip Database Download Success, Check Updated..."
@@ -41,15 +45,15 @@
          LOG_OUT "Geoip Database Has Been Updated, Starting To Replace The Old Version..."
          mv /tmp/Country.mmdb "$geoip_path" >/dev/null 2>&1
          LOG_OUT "Geoip Database Update Successful!"
-         sleep 5
+         sleep 3
          [ "$(unify_ps_prevent)" -eq 0 ] && /etc/init.d/openclash restart >/dev/null 2>&1 &
       else
          LOG_OUT "Updated Geoip Database No Change, Do Nothing..."
-         sleep 5
+         sleep 3
       fi
    else
       LOG_OUT "Geoip Database Update Error, Please Try Again Later..."
-      sleep 5
+      sleep 3
    fi
    rm -rf /tmp/Country.mmdb >/dev/null 2>&1
    SLOG_CLEAN

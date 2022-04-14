@@ -41,9 +41,14 @@ set_groups()
   if [ -z "$1" ]; then
      return
   fi
+  
+  if [ "$add_for_this" -eq 1 ]; then
+     return
+  fi
 
-	if [ "$1" = "$3" ]; then
+	if [ "$1" = "$3" ] || [ "$1" = "all" ]; then
 	   set_group=1
+	   add_for_this=1
 	   echo "      - \"${2}\"" >>$GROUP_FILE
 	fi
 
@@ -55,14 +60,21 @@ set_relay_groups()
      return
   fi
   
+  if [ "$add_for_this" -eq 1 ]; then
+     return
+  fi
+  
   if [ ! -z "$(echo "$1" |grep "#relay#")" ]; then
      server_relay_num=$(echo "$1" |awk -F '#relay#' '{print $2}')
      server_group_name=$(echo "$1" |awk -F '#relay#' '{print $1}')
   fi
 
-  if [ ! -z "$server_relay_num" ] && [ "$server_group_name" = "$3" ]; then
-     set_group=1
-     echo "$server_relay_num #      - \"${2}\"" >>/tmp/relay_server
+  if [ ! -z "$server_relay_num" ]; then
+     if [ "$server_group_name" = "$3" ] || [ "$server_group_name" = "all" ]; then
+        set_group=1
+        add_for_this=1
+        echo "$server_relay_num #      - \"${2}\"" >>/tmp/relay_server
+     fi
 	fi
 }
 
@@ -71,6 +83,7 @@ yml_servers_add()
 {
 	
 	local section="$1"
+	add_for_this=0
 	config_get_bool "enabled" "$section" "enabled" "1"
 	config_get "config" "$section" "config" ""
 	config_get "name" "$section" "name" ""
@@ -111,6 +124,7 @@ set_other_groups()
 set_proxy_provider()
 {
 	local section="$1"
+	add_for_this=0
 	config_get_bool "enabled" "$section" "enabled" "1"
 	config_get "config" "$section" "config" ""
 	config_get "name" "$section" "name" ""
@@ -137,9 +151,14 @@ set_provider_groups()
   if [ -z "$1" ]; then
      return
   fi
+  
+  if [ "$add_for_this" -eq 1 ]; then
+     return
+  fi
 
-	if [ "$1" = "$3" ]; then
+	if [ "$1" = "$3" ] || [ "$1" = "all" ]; then
 	   set_proxy_provider=1
+	   add_for_this=1
 	   echo "      - ${2}" >>$GROUP_FILE
 	fi
 
@@ -159,6 +178,8 @@ yml_groups_set()
    config_get "test_url" "$section" "test_url" ""
    config_get "test_interval" "$section" "test_interval" ""
    config_get "tolerance" "$section" "tolerance" ""
+   config_get "interface_name" "$section" "interface_name" ""
+   config_get "routing_mark" "$section" "routing_mark" ""
    
    if [ ! -z "$if_game_group" ] && [ "$if_game_group" != "$name" ]; then
       return
@@ -205,7 +226,9 @@ yml_groups_set()
    #名字变化时处理规则部分
    if [ "$name" != "$old_name" ] && [ ! -z "$old_name" ]; then
       sed -i "s/,${old_name}/,${name}#d/g" "$CONFIG_FILE" 2>/dev/null
-      sed -i "s/old_name \'${old_name}/old_name \'${name}/g" "$CFG_FILE" 2>/dev/null
+      sed -i "s/: \"${old_name}\"/: \"${name}#d\"/g" "$CONFIG_FILE" 2>/dev/null
+      sed -i "s/return \"${old_name}\"$/return \"${name}#d\"/g" "$CONFIG_FILE" 2>/dev/null
+      sed -i "s/old_name \'${old_name}\'/old_name \'${name}\'/g" "$CFG_FILE" 2>/dev/null
       config_load "openclash"
    fi
    
@@ -237,14 +260,20 @@ yml_groups_set()
       sed -i "/use: ${group_name}/d" $GROUP_FILE 2>/dev/null
    fi
    
-   [ ! -z "$test_url" ] && {
+   [ -n "$test_url" ] && {
    	  echo "    url: $test_url" >>$GROUP_FILE
    }
-   [ ! -z "$test_interval" ] && {
+   [ -n "$test_interval" ] && {
       echo "    interval: \"$test_interval\"" >>$GROUP_FILE
    }
-   [ ! -z "$tolerance" ] && {
+   [ -n "$tolerance" ] && {
       echo "    tolerance: \"$tolerance\"" >>$GROUP_FILE
+   }
+   [ -n "$interface_name" ] && {
+      echo "    interface-name: \"$interface_name\"" >>$GROUP_FILE
+   }
+   [ -n "$routing_mark" ] && {
+      echo "    routing-mark: \"$routing_mark\"" >>$GROUP_FILE
    }
 }
 
@@ -256,7 +285,7 @@ if [ "$create_config" = "0" ] || [ "$servers_if_update" = "1" ] || [ ! -z "$if_g
    if [ $? -ne 0 ]; then
       LOG_OUT "Error: Config File【$CONFIG_NAME】Unable To Parse, Please Choose One-key Function To Create Config File..."
       uci commit openclash
-      sleep 5
+      sleep 3
       SLOG_CLEAN
       del_lock
       exit 0

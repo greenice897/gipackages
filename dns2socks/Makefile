@@ -1,10 +1,6 @@
+# SPDX-License-Identifier: GPL-3.0-only
 #
-# Copyright (C) 2021 ImmortalWrt
-# <https://immortalwrt.org>
-#
-# This is free software, licensed under the GNU General Public License v3.
-# See /LICENSE for more information.
-#
+# Copyright (C) 2021 ImmortalWrt.org
 
 include $(TOPDIR)/rules.mk
 
@@ -15,7 +11,7 @@ PKG_RELEASE:=2
 PKG_SOURCE:=SourceCode.zip
 PKG_SOURCE_URL:=@SF/dns2socks
 PKG_SOURCE_DATE:=2020-02-18
-PKG_HASH:=406b5003523577d39da66767adfe54f7af9b701374363729386f32f6a3a995f4
+PKG_HASH:=skip
 
 PKG_MAINTAINER:=ghostmaker
 PKG_LICENSE:=BSD-3-Clause
@@ -23,21 +19,21 @@ PKG_LICENSE_FILE:=LICENSE
 
 include $(INCLUDE_DIR)/package.mk
 
+UNZIP_CMD:=unzip -q -d $(PKG_BUILD_DIR) $(DL_DIR)/$(PKG_SOURCE)
+
 define Package/dns2socks
   SECTION:=net
   CATEGORY:=Network
   SUBMENU:=IP Addresses and Names
-  TITLE:=The utility to resolve DNS requests via a SOCKS5 tunnel.
+  TITLE:=DNS to SOCKS or HTTP proxy
   URL:=http://dns2socks.sourceforge.net/
-  MAINTAINER:=ghostmaker
   DEPENDS:=+libpthread
 endef
 
 define Package/dns2socks/description
-  This is a utility to resolve DNS requests via a SOCKS5 tunnel and caches the answers.
+  This is a command line utility to resolve DNS requests via
+  a SOCKS tunnel like Tor or a HTTP proxy.
 endef
-
-UNZIP_CMD:=unzip -q -d $(PKG_BUILD_DIR) $(DL_DIR)/$(PKG_SOURCE)
 
 define Build/Compile
 	$(TARGET_CC) \

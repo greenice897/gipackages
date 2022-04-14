@@ -14,16 +14,10 @@ m.pageaction = false
 m.description=translate("Attention:")..
 "<br/>"..translate("The game proxy is a test function and does not guarantee the availability of rules")..
 "<br/>"..translate("Preparation steps:")..
-"<br/>"..translate("1. In the <server and policy group management> page, create the policy group and node you are going to use, and apply the configuration (when adding nodes, you must select the policy group you want to join). Policy group type suggestion: fallback, game nodes must support UDP")..
+"<br/>"..translate("1. In the <server and policy group management> page, create the policy group and node you are going to use, and apply the configuration (when adding nodes, you must select the policy group you want to join). Policy group type suggestion: fallback, game nodes must be support UDP and not a Vmess")..
 "<br/>"..translate("2. Click the <manage third party game rules> or <manage third party rule set> button to enter the rule list and download the rules you want to use")..
 "<br/>"..translate("3. On this page, set the corresponding configuration file and policy group of the rule you have downloaded, and save the settings")..
-"<br/>"..
-"<br/>"..translate("Use in normal mode (rules of the game only):")..
-"<br/>"..translate("1. Select normal mode in <global settings> - <mode settings> - <running mode> and enable UDP traffic, then restart")..
-"<br/>"..
-"<br/>"..translate("Use in tun mode:")..
-"<br/>"..translate("1. In the <global settings> - <version update tab>, download and install the corresponding mode core first")..
-"<br/>"..translate("2. Select mixed mode, Tun mode or game mode in <global settings> - <mode settings> - <running mode> and restart")..
+"<br/>"..translate("4. Install the TUN core")..
 "<br/>"..
 "<br/>"..translate("When setting this page, if the groups is empty, please go to the <server and group management> page to add")..
 "<br/>"..
@@ -48,7 +42,7 @@ function IsYmlFile(e)
 end
 
 -- [[ Edit Game Rule ]] --
-s = m:section(TypedSection, "game_config", translate("Game Rules and Groups"))
+s = m:section(TypedSection, "game_config", translate("Game Rules and Groups (Only TUN Core Support)"))
 s.anonymous = true
 s.addremove = true
 s.sortable = true
@@ -246,14 +240,14 @@ local t = {
 ss = m:section(Table, t)
 
 o = ss:option(Button, "Commit", " ")
-o.inputtitle = translate("Commit Configurations")
+o.inputtitle = translate("Commit Settings")
 o.inputstyle = "apply"
 o.write = function()
   m.uci:commit("openclash")
 end
 
 o = ss:option(Button, "Apply", " ")
-o.inputtitle = translate("Apply Configurations")
+o.inputtitle = translate("Apply Settings")
 o.inputstyle = "apply"
 o.write = function()
   m.uci:set("openclash", "config", "enable", 1)

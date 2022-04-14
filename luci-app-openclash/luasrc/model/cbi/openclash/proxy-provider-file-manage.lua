@@ -9,16 +9,6 @@ local UTIL = require "luci.util"
 local fs = require "luci.openclash"
 local uci = require "luci.model.uci".cursor()
 
-local function i(e)
-local t=0
-local a={' KB',' MB',' GB',' TB'}
-repeat
-e=e/1024
-t=t+1
-until(e<=1024)
-return string.format("%.1f",e)..a[t]
-end
-
 local p,r={}
 for x,y in ipairs(fs.glob("/etc/openclash/proxy_provider/*"))do
 r=fs.stat(y)
@@ -26,7 +16,7 @@ if r then
 p[x]={}
 p[x].name=fs.basename(y)
 p[x].mtime=os.date("%Y-%m-%d %H:%M:%S",r.mtime)
-p[x].size=i(r.size)
+p[x].size=fs.filesize(r.size)
 p[x].remove=0
 p[x].enable=false
 end
@@ -39,6 +29,16 @@ tb1=proxy_form:section(Table,p)
 nm1=tb1:option(DummyValue,"name",translate("File Name"))
 mt1=tb1:option(DummyValue,"mtime",translate("Update Time"))
 sz1=tb1:option(DummyValue,"size",translate("Size"))
+
+btned1=tb1:option(Button,"edit",translate("Edit"))
+btned1.render=function(p,x,r)
+p.inputstyle="apply"
+Button.render(p,x,r)
+end
+btned1.write=function(r,x)
+	local file_path = "etc/openclash/proxy_provider/" .. fs.basename(p[x].name)
+	HTTP.redirect(DISP.build_url("admin", "services", "openclash", "other-file-edit", "proxy-provider-file-manage", "%s") %file_path)
+end
 
 btndl1 = tb1:option(Button,"download1",translate("Download Config"))
 btndl1.template="openclash/other_button"
@@ -85,7 +85,7 @@ return r
 end
 
 local t = {
-    {Refresh, Delete_all, Apply}
+    {Refresh, Create, Delete_all, Apply}
 }
 
 a = proxy_form:section(Table, t)
@@ -97,6 +97,11 @@ o.write = function()
   HTTP.redirect(DISP.build_url("admin", "services", "openclash", "proxy-provider-file-manage"))
 end
 
+o = a:option(DummyValue, "Create", " ")
+o.rawhtml = true
+o.template = "openclash/input_file_name"
+o.value = "/etc/openclash/proxy_provider/"
+
 o = a:option(Button, "Delete_all", " ")
 o.inputtitle = translate("Delete All File")
 o.inputstyle = "remove"
@@ -106,7 +111,7 @@ o.write = function()
 end
 
 o = a:option(Button, "Apply", " ")
-o.inputtitle = translate("Back Configurations")
+o.inputtitle = translate("Back Settings")
 o.inputstyle = "reset"
 o.write = function()
   HTTP.redirect(DISP.build_url("admin", "services", "openclash", "config"))
