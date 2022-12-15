@@ -19,6 +19,7 @@ local local_http_address = var["-local_http_address"] or "0.0.0.0"
 local local_http_port = var["-local_http_port"]
 local local_http_username = var["-local_http_username"]
 local local_http_password = var["-local_http_password"]
+local tcp_proxy_way = var["-tcp_proxy_way"]
 local server_host = var["-server_host"] or node.address
 local server_port = var["-server_port"] or node.port
 
@@ -26,6 +27,10 @@ if api.is_ipv6(server_host) then
     server_host = api.get_ipv6_full(server_host)
 end
 local server = server_host .. ":" .. server_port
+
+if (node.hysteria_hop) then
+    server = server .. "," .. node.hysteria_hop
+end
 
 local config = {
     server = server,
@@ -42,6 +47,9 @@ local config = {
     retry_interval = 5,
     recv_window_conn = (node.hysteria_recv_window_conn) and tonumber(node.hysteria_recv_window_conn) or nil,
     recv_window = (node.hysteria_recv_window) and tonumber(node.hysteria_recv_window) or nil,
+    handshake_timeout = (node.hysteria_handshake_timeout) and tonumber(node.hysteria_handshake_timeout) or nil,
+    idle_timeout = (node.hysteria_idle_timeout) and tonumber(node.hysteria_idle_timeout) or nil,
+    hop_interval = (node.hysteria_hop_interval) and tonumber(node.hysteria_hop_interval) or nil,
     disable_mtu_discovery = (node.hysteria_disable_mtu_discovery) and true or false,
     socks5 = (local_socks_address and local_socks_port) and {
         listen = local_socks_address .. ":" .. local_socks_port,
@@ -57,7 +65,11 @@ local config = {
         user = (local_http_username and local_http_password) and local_http_username,
         password = (local_http_username and local_http_password) and local_http_password,
     } or nil,
-    tproxy_tcp = (local_tcp_redir_port) and {
+    redirect_tcp = ("redirect" == tcp_proxy_way and local_tcp_redir_port) and {
+        listen = "0.0.0.0:" .. local_tcp_redir_port,
+        timeout = 300
+    } or nil,
+    tproxy_tcp = ("tproxy" == tcp_proxy_way and local_tcp_redir_port) and {
         listen = "0.0.0.0:" .. local_tcp_redir_port,
         timeout = 300
     } or nil,
