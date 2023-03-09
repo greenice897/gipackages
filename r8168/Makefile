@@ -23,12 +23,13 @@ define KernelPackage/r8168
   TITLE:=Driver for Realtek r8168 chipsets
   SUBMENU:=Network Devices
   VERSION:=$(LINUX_VERSION)+$(PKG_VERSION)-$(BOARD)-$(PKG_RELEASE)
+  DEPENDS:=@PCI_SUPPORT
   FILES:= $(PKG_BUILD_DIR)/src/r8168.ko
   AUTOLOAD:=$(call AutoProbe,r8168)
   CONFLICTS:=kmod-r8169
 endef
 
-define Package/r8168/description
+define KernelPackage/r8168/description
   This package contains a driver for Realtek r8168 chipsets.
 endef
 
