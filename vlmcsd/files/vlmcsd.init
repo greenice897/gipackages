@@ -9,12 +9,12 @@ start(){
 		if [ -n "$FW4" ]; then
 			# local handles=$(nft -a list chain ip filter vlmscd_input_rule | grep -E "1688" | awk -F '# handle ' '{print$2}')
 			# nft delete rule ip filter vlmscd_input_rule handle ${handles} 2>/dev/null
-			nft flush chain ip filter vlmscd_input_rule
-			nft delete chain ip filter vlmscd_input_rule
-			nft add chain ip filter vlmscd_input_rule { type filter hook input priority 0\; }
-			nft add rule ip filter vlmscd_input_rule tcp dport 1688 counter accept
+			nft flush chain inet fw4 vlmscd_input_rule
+			nft delete chain inet fw4 vlmscd_input_rule
+			nft add chain inet fw4 vlmscd_input_rule { type filter hook input priority 0\; }
+			nft add rule inet fw4 vlmscd_input_rule tcp dport 1688 counter accept
 			sed -i '/## luci-app-vlmcsd/d' /etc/firewall.user
-			echo "nft add rule ip filter vlmscd_input_rule tcp dport 1688 counter accept ## luci-app-vlmcsd" >> /etc/firewall.user
+			echo "nft add rule inet fw4 vlmscd_input_rule tcp dport 1688 counter accept ## luci-app-vlmcsd" >> /etc/firewall.user
 			echo "KMS Server has started."
 		else
 			iptables -D input_rule -p tcp --dport 1688 -j ACCEPT
@@ -36,8 +36,8 @@ stop(){
 		kill $pid
 		rm -f /tmp/vlmcsd.pid
 		if [ -n "$FW4" ]; then
-			nft flush chain ip filter vlmscd_input_rule
-			nft delete chain ip filter vlmscd_input_rule
+			nft flush chain inet fw4 vlmscd_input_rule
+			nft delete chain inet fw4 vlmscd_input_rule
 		else
 			iptables -D input_rule -p tcp --dport 1688 -j ACCEPT
 		fi
