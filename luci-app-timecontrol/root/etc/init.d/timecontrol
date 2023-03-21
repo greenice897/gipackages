@@ -30,20 +30,20 @@ add_rule(){
 			local z5=$(u_get $i z5)
 			local z6=$(u_get $i z6)
 			local z7=$(u_get $i z7)
-			[ "$z1" == "1" ] && local Z1="Mon,"
-			[ "$z2" == "1" ] && local Z2="Tue,"
-			[ "$z3" == "1" ] && local Z3="Wed,"
-			[ "$z4" == "1" ] && local Z4="Thu,"
-			[ "$z5" == "1" ] && local Z5="Fri,"
-			[ "$z6" == "1" ] && local Z6="Sat,"
-			[ "$z7" == "1" ] && local Z7="Sun"
+			[ "$z1" == "1" ] && local Z1="Monday,"
+			[ "$z2" == "1" ] && local Z2="Tuesday,"
+			[ "$z3" == "1" ] && local Z3="Wednesday,"
+			[ "$z4" == "1" ] && local Z4="Thursday,"
+			[ "$z5" == "1" ] && local Z5="Friday,"
+			[ "$z6" == "1" ] && local Z6="Saturday,"
+			[ "$z7" == "1" ] && local Z7="Sunday"
 			if [ -z $enable ] || [ -z $macaddr ] || [ -z $timeoff ] || [ -z $timeon ]; then
 				continue
 			fi
 			if [ "$enable" == "1" ]; then
 				if [ -n "$FW4" ]; then
-					nft insert rule inet fw4 TIMECONTROL meta l4proto tcp ether saddr $macaddr meta hour $timeon-$timeoff meta day { $Z1 $Z2 $Z3 $Z4 $Z5 $Z6 $Z7 } counter jump drop_to_wan
-					nft insert rule inet fw4 TIMECONTROL meta l4proto udp ether saddr $macaddr meta hour $timeon-$timeoff meta day { $Z1 $Z2 $Z3 $Z4 $Z5 $Z6 $Z7 } counter jump drop_to_wan
+					nft insert rule inet fw4 TIMECONTROL meta l4proto tcp ether saddr $macaddr meta hour $timeon-$timeoff meta day { $Z1$Z2$Z3$Z4$Z5$Z6$Z7 } counter drop
+					nft insert rule inet fw4 TIMECONTROL meta l4proto udp ether saddr $macaddr meta hour $timeon-$timeoff meta day { $Z1$Z2$Z3$Z4$Z5$Z6$Z7 } counter drop
 				else
 					iptables -t filter -I TIMECONTROL -m mac --mac-source $macaddr -m time --kerneltz --timestart $timeon --timestop $timeoff --weekdays $Z1$Z2$Z3$Z4$Z5$Z6$Z7 -j DROP
 					iptables -t nat -I PREROUTING 1 -m mac --mac-source $macaddr -m time --kerneltz --timestart $timeon --timestop $timeoff --weekdays $Z1$Z2$Z3$Z4$Z5$Z6$Z7 -m comment --comment "TIMECONTROL" -j RETURN
