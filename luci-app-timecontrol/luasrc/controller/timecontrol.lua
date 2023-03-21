@@ -13,8 +13,8 @@ end
 
 function status()
     local e = {}
-    local FW4 = luci.sys.call($(command -v fw4))
-    if luci.sys.call([ -n "$FW4" ]) then
+    local FW4 = luci.sys.exec("$(command -v fw4)")
+    if FW4 ~= nil then
         e.status = luci.sys.call("nft list chain inet fw4 TIMECONTROL | grep TIMECONTROL >/dev/null") == 0
     else
         e.status = luci.sys.call("iptables -L FORWARD | grep TIMECONTROL >/dev/null") == 0
