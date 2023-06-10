@@ -66,17 +66,17 @@ start(){
 	stop
 	enable=$(uci get mia.@basic[0].enable)
 	[ $enable -eq 0 ] && exit 0
-		nft add chain inet fw4 MIA
-		nft insert rule inet fw4 input_wan udp dport 53 counter jump MIA comment \"Rule For Control\"
-		nft insert rule inet fw4 input_wan tcp dport 53 counter jump MIA comment \"Rule For Control\"
-		nft add rule inet fw4 dstnat ip protocol udp ip dport 53 redirect to 53
-		nft add rule inet fw4 dstnat ip protocol udp ip dport 53 redirect to 53
-		strict=$(uci get mia.@basic[0].strict)
-		[ $strict -eq 1 ] && nft insert rule inet fw4 forward_wan counter jump MIA comment \"Rule For Control\"
+	nft add chain inet fw4 MIA
+	nft insert rule inet fw4 input_wan udp dport 53 counter jump MIA comment \"Rule For Control\"
+	nft insert rule inet fw4 input_wan tcp dport 53 counter jump MIA comment \"Rule For Control\"
+	nft add rule inet fw4 dstnat ip protocol udp ip dport 53 redirect to 53
+	nft add rule inet fw4 dstnat ip protocol udp ip dport 53 redirect to 53
+	strict=$(uci get mia.@basic[0].strict)
+	[ $strict -eq 1 ] && nft insert rule inet fw4 forward_wan counter jump MIA comment \"Rule For Control\"
 	add_rule 
 }
 stop(){
-       del_rule
-		nft flush chain inet fw4 MIA 2>/dev/null
-		nft delete chain inet fw4 MIA 2>/dev/null
+	del_rule
+	nft flush chain inet fw4 MIA 2>/dev/null
+	nft delete chain inet fw4 MIA 2>/dev/null
 }
