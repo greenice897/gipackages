@@ -11,7 +11,7 @@ end
 
 function act_status()
 	local e = {}
-	e.running = luci.sys.call("iptables -L INPUT |grep MIA >/dev/null") == 0
+	e.running = luci.sys.call("nft list chain inet fw4 input_wan |grep MIA >/dev/null") == 0
 	luci.http.prepare_content("application/json")
 	luci.http.write_json(e)
 end
