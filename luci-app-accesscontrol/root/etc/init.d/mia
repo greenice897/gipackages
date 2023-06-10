@@ -44,7 +44,8 @@ do
 		break
 	fi
 	if [ "$enable" == "1" ]; then
-		iptables -t filter -I MIA  -m mac --mac-source $macaddr -m time --kerneltz --timestart $timeon --timestop $timeoff --weekdays $Z1$Z2$Z3$Z4$Z5$Z6$Z7 -j DROP
+		nft insert rule inet fw4 MIA meta l4proto tcp ether saddr $macaddr meta hour $timeon-$timeoff meta day { $Z1$Z2$Z3$Z4$Z5$Z6$Z7 } counter jump reject_to_wan
+		nft insert rule inet fw4 MIA meta l4proto udp ether saddr $macaddr meta hour $timeon-$timeoff meta day { $Z1$Z2$Z3$Z4$Z5$Z6$Z7 } counter jump reject_to_wan
 	fi
 	for n in $(seq 1 7)
 	do
@@ -54,35 +55,28 @@ done
 }
 
 del_rule(){
-	type=$1
-	blackMacAdd=$(iptables -t nat -L $type | grep -w RETURN | grep -w "MAC" | awk '{print $7}')
-	[ -n "$blackMacAdd" ] && {
-		for macaddrb in $blackMacAdd
-		do
-			iptables -t nat -D $type -m mac --mac-source $macaddrb -j RETURN
-		done
-	}
+	local handles=$(nft -a list chain inet fw4 input_wan | grep -E "MIA" | awk -F '# handle ' '{print$2}')
+	while [ -n "$handles" ]
+	do
+		nft delete rule inet fw4 input_wan handle ${handles} 2>/dev/null
+	done
 }
 
 start(){
-  stop
+	stop
 	enable=$(uci get mia.@basic[0].enable)
 	[ $enable -eq 0 ] && exit 0
-  iptables -t filter -N MIA
-  iptables -I INPUT -p udp --dport 53 -m comment --comment "Rule For Control" -j MIA
-  iptables -I INPUT -p tcp --dport 53 -m comment --comment "Rule For Control" -j MIA
-  iptables -t nat -A PREROUTING -p udp --dport 53 -j REDIRECT --to-ports 53 -m comment --comment "Rule For Control"
-  iptables -t nat -A PREROUTING -p tcp --dport 53 -j REDIRECT --to-ports 53 -m comment --comment "Rule For Control"
-  strict=$(uci get mia.@basic[0].strict)
-  [ $strict -eq 1 ] && iptables -t filter -I FORWARD -m comment --comment "Rule For Control" -j MIA
-  add_rule 
+		nft add chain inet fw4 MIA
+		nft insert rule inet fw4 input_wan udp dport 53 counter jump MIA comment \"Rule For Control\"
+		nft insert rule inet fw4 input_wan tcp dport 53 counter jump MIA comment \"Rule For Control\"
+		nft add rule inet fw4 dstnat ip protocol udp ip dport 53 redirect to 53
+		nft add rule inet fw4 dstnat ip protocol udp ip dport 53 redirect to 53
+		strict=$(uci get mia.@basic[0].strict)
+		[ $strict -eq 1 ] && nft insert rule inet fw4 forward_wan counter jump MIA comment \"Rule For Control\"
+	add_rule 
 }
 stop(){
-  iptables -t filter -D FORWARD -m comment --comment "Rule For Control" -j MIA 2>/dev/null
-  iptables -D INPUT -p udp --dport 53 -m comment --comment "Rule For Control" -j MIA 2>/dev/null
-  iptables -D INPUT -p tcp --dport 53 -m comment --comment "Rule For Control" -j MIA 2>/dev/null
-  iptables -t nat -D PREROUTING -p udp --dport 53 -j REDIRECT --to-ports 53 -m comment --comment "Rule For Control" 2>/dev/null
-  iptables -t nat -D PREROUTING -p tcp --dport 53 -j REDIRECT --to-ports 53 -m comment --comment "Rule For Control" 2>/dev/null
-  iptables -t filter -F MIA 2>/dev/null
-  iptables -t filter -X MIA 2>/dev/null
+       del_rule
+		nft flush chain inet fw4 MIA 2>/dev/null
+		nft delete chain inet fw4 MIA 2>/dev/null
 }
