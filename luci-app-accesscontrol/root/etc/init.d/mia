@@ -62,9 +62,9 @@ del_rule(){
 	for MIA_CHAIN in input_wan dstnat forward_wan
 	do
 		if [ ${MIA_CHAIN} == "dstnat" ] then
-			handles=$(nft -a list chain inet fw4 input_wan | grep -E "AIM_NAT" | awk -F '# handle ' '{print$2}')
+			handles=$(nft -a list chain inet fw4 ${MIA_CHAIN} | grep -E "AIM_NAT" | awk -F '# handle ' '{print$2}')
 		else	
-			handles=$(nft -a list chain inet fw4 dstnat | grep -E "MIA" | awk -F '# handle ' '{print$2}')
+			handles=$(nft -a list chain inet fw4 ${MIA_CHAIN} | grep -E "MIA" | awk -F '# handle ' '{print$2}')
 		fi
 		while [ -n "$handles" ]
 		do
