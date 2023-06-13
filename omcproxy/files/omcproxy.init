@@ -8,7 +8,6 @@ PROG=/usr/sbin/omcproxy
 # Uncomment to enable verbosity
 #OPTIONS="-v"
 PROXIES=""
-FW4=$(command -v fw4)
 
 omcproxy_add_proxy() {
 	local proxy scope uplink updevice downlinks
@@ -71,11 +70,7 @@ omcproxy_add_firewall_rules() {
 	config_get uplink $1 uplink
 	config_get downlinks $1 downlink
 
-	if [ -n "$FW4" ]; then
-		upzone=$(fw4 -q network $uplink 2>/dev/null)
-	else
-		upzone=$(fw3 -q network $uplink 2>/dev/null)
-	fi
+	upzone=$(fw4 -q network $uplink 2>/dev/null)
 	[ -n "$upzone" ] || return 0
 
 	json_add_object ""
@@ -102,11 +97,7 @@ omcproxy_add_firewall_rules() {
 	json_close_object
 
 	for downlink in $downlinks; do
-		if [ -n "$FW4" ]; then
-			downzone=$(fw4 -q network $downlink 2>/dev/null)
-		else
-			downzone=$(fw3 -q network $downlink 2>/dev/null)
-		fi
+		downzone=$(fw4 -q network $downlink 2>/dev/null)
 		[ -n "$downzone" ] || continue
 
 		json_add_object ""
