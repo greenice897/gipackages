@@ -44,8 +44,8 @@ do
                 break
         fi
         if [ "$enable" == "1" ]; then
-                nft add rule inet fw4 AIM_NAT ip protocol tcp tcp dport 53 redirect to 53
-                nft add rule inet fw4 AIM_NAT ip protocol udp udp dport 53 redirect to 53
+                nft add rule inet fw4 AIM_NAT tcp dport 53 counter redirect to :53
+                nft add rule inet fw4 AIM_NAT udp dport 53 counter redirect to :53
                 nft insert rule inet fw4 MIA meta l4proto tcp ether saddr $macaddr meta hour $timeon-$timeoff meta day { $Z1$Z2$Z3$Z4$Z5$Z6$Z7 } counter jump reject_to_wan
                 nft insert rule inet fw4 MIA meta l4proto udp ether saddr $macaddr meta hour $timeon-$timeoff meta day { $Z1$Z2$Z3$Z4$Z5$Z6$Z7 } counter jump reject_to_wan
 	fi
@@ -79,8 +79,8 @@ start(){
         nft add chain inet fw4 AIM_NAT
         nft insert rule inet fw4 input_wan udp dport 53 counter jump MIA comment \"Rule For Control\"
         nft insert rule inet fw4 input_wan tcp dport 53 counter jump MIA comment \"Rule For Control\"
-        nft add rule inet fw4 dstnat ip protocol tcp tcp dport 53 jump AIM_NAT
-        nft add rule inet fw4 dstnat ip protocol udp udp dport 53 jump AIM_NAT
+        nft add rule inet fw4 dstnat tcp dport 53 counter jump AIM_NAT
+        nft add rule inet fw4 dstnat udp dport 53 counter jump AIM_NAT
         strict=$(uci get mia.@basic[0].strict)
         [ $strict -eq 1 ] && nft insert rule inet fw4 forward_wan counter jump MIA comment \"Rule For Control\"
         add_rule
