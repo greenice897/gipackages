@@ -2,7 +2,6 @@
 
 START=99
 CONFIG=timecontrol
-FW4=$(command -v fw4)
 
 uci_get_by_type() {
 	local index=0
@@ -41,13 +40,9 @@ add_rule(){
 				continue
 			fi
 			if [ "$enable" == "1" ]; then
-				if [ -n "$FW4" ]; then
-					nft insert rule inet fw4 TIMECONTROL meta l4proto tcp ether saddr $macaddr meta hour $timeon-$timeoff meta day { $Z1$Z2$Z3$Z4$Z5$Z6$Z7 } counter drop
-					nft insert rule inet fw4 TIMECONTROL meta l4proto udp ether saddr $macaddr meta hour $timeon-$timeoff meta day { $Z1$Z2$Z3$Z4$Z5$Z6$Z7 } counter drop
-				else
-					iptables -t filter -I TIMECONTROL -m mac --mac-source $macaddr -m time --kerneltz --timestart $timeon --timestop $timeoff --weekdays $Z1$Z2$Z3$Z4$Z5$Z6$Z7 -j DROP
-					iptables -t nat -I PREROUTING 1 -m mac --mac-source $macaddr -m time --kerneltz --timestart $timeon --timestop $timeoff --weekdays $Z1$Z2$Z3$Z4$Z5$Z6$Z7 -m comment --comment "TIMECONTROL" -j RETURN
-				fi
+				nft add rule inet fw4 TIMECONTROL jump reject_to_wan
+				nft insert rule inet fw4 forward_lan meta l4proto tcp ether saddr $macaddr meta hour $timeon-$timeoff meta day { $Z1$Z2$Z3$Z4$Z5$Z6$Z7 } counter jump TIMECONTROL
+				nft insert rule inet fw4 forward_lan meta l4proto udp ether saddr $macaddr meta hour $timeon-$timeoff meta day { $Z1$Z2$Z3$Z4$Z5$Z6$Z7 } counter jump TIMECONTROL
 			fi
 		done
 	}
@@ -55,41 +50,22 @@ add_rule(){
 }
 
 del_rule(){
-	nums=$(iptables -t nat -n -L PREROUTING 2>/dev/null | grep -c "TIMECONTROL")
-	if [ -n "$nums" ]; then
-		until [ "$nums" = 0 ]
-		do
-			rules=$(iptables -t nat -n -L PREROUTING --line-num 2>/dev/null | grep "TIMECONTROL" | awk '{print $1}')
-			for rule in $rules
-			do
-				iptables -t nat -D PREROUTING $rule 2>/dev/null
-				break
-			done
-			nums=$(expr $nums - 1)
-		done
-	fi
+	handles=$(nft -a list chain inet fw4 forward_lan | grep -E "TIMECONTROL" | awk -F '# handle ' '{print$2}')
+	for handle in $handles
+	do
+		nft delete rule inet fw4 forward_lan handle ${handle} 2>/dev/null
+	done
 }
 
 start(){
 	ENABLED=$(uci_get_by_type basic enable 0)
 	[ "$ENABLED" != "1" ] && exit 0
-	if [ -n "$FW4" ]; then
-		nft add chain inet fw4 TIMECONTROL
-	else
-		iptables -t filter -N TIMECONTROL
-		iptables -t filter -I FORWARD -j TIMECONTROL
-	fi
+	nft add chain inet fw4 TIMECONTROL
 	add_rule
 }
 
 stop(){
-	if [ -n "$FW4" ]; then
-		nft flush chain inet fw4 TIMECONTROL 2>/dev/null
-		nft delete chain inet fw4 TIMECONTROL 2>/dev/null
-	else
-		iptables -t filter -D FORWARD -j TIMECONTROL 2>/dev/null
-		iptables -t filter -F TIMECONTROL 2>/dev/null
-		iptables -t filter -X TIMECONTROL 2>/dev/null
-		del_rule
-	fi
+	nft flush chain inet fw4 TIMECONTROL 2>/dev/null
+	nft delete chain inet fw4 TIMECONTROL 2>/dev/null
+	del_rule
 }
