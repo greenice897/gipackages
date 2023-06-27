@@ -65,7 +65,7 @@ start(){
 }
 
 stop(){
+	del_rule
 	nft flush chain inet fw4 TIMECONTROL 2>/dev/null
 	nft delete chain inet fw4 TIMECONTROL 2>/dev/null
-	del_rule
 }
