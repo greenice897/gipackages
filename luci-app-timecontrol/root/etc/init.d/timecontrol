@@ -40,9 +40,9 @@ add_rule(){
 				continue
 			fi
 			if [ "$enable" == "1" ]; then
-				nft add rule inet fw4 TIMECONTROL jump reject_to_wan
-				nft insert rule inet fw4 forward_lan meta l4proto tcp ether saddr $macaddr meta hour $timeon-$timeoff meta day { $Z1$Z2$Z3$Z4$Z5$Z6$Z7 } counter jump TIMECONTROL
-				nft insert rule inet fw4 forward_lan meta l4proto udp ether saddr $macaddr meta hour $timeon-$timeoff meta day { $Z1$Z2$Z3$Z4$Z5$Z6$Z7 } counter jump TIMECONTROL
+				nft insert rule inet fw4 forward_lan jump TIMECONTROL
+				nft add rule inet fw4 TIMECONTROL meta l4proto tcp ether saddr $macaddr meta hour $timeon-$timeoff meta day { $Z1$Z2$Z3$Z4$Z5$Z6$Z7 } counter jump reject_to_wan
+				nft add rule inet fw4 TIMECONTROL meta l4proto udp ether saddr $macaddr meta hour $timeon-$timeoff meta day { $Z1$Z2$Z3$Z4$Z5$Z6$Z7 } counter jump reject_to_wan
 			fi
 		done
 	}
