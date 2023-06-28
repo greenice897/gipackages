@@ -13,7 +13,7 @@ end
 
 function status()
     local e = {}
-    e.status = luci.sys.call("nft list chain inet fw4 TIMECONTROL | grep TIMECONTROL >/dev/null") == 0
+    e.status = luci.sys.call("nft list chain inet fw4 TIMECONTROL 2>/dev/null | grep TIMECONTROL >/dev/null") == 0
     luci.http.prepare_content("application/json")
     luci.http.write_json(e)
 end
