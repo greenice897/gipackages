@@ -17,7 +17,7 @@ add_rule(){
 			local ret=$(uci -q get $CONFIG.@macbind[$1].$2)
 			echo ${ret:=$3}
 		}
-		nft insert rule inet fw4 forward_lan jump TIMECONTROL
+		nft insert rule inet fw4 forward_lan counter jump TIMECONTROL
 		for i in $(seq 0 $count); do
 			local enable=$(u_get $i enable 0)
 			local macaddr=$(u_get $i macaddr)
