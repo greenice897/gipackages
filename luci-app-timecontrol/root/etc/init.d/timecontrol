@@ -11,13 +11,14 @@ uci_get_by_type() {
 }
 
 add_rule(){
+	nft insert rule inet fw4 dstnat counter jump TIMECONTROL
+	nft insert rule inet fw4 forward_lan counter jump TIMECONTROL
 	local count=$(uci show $CONFIG | grep "@macbind" | sed -n '$p' | cut -d '[' -f 2 | cut -d ']' -f 1)
 	[ -n "$count" ] && [ "$count" -ge 0 ] && {
 		u_get() {
 			local ret=$(uci -q get $CONFIG.@macbind[$1].$2)
 			echo ${ret:=$3}
 		}
-		nft insert rule inet fw4 forward_lan counter jump TIMECONTROL
 		for i in $(seq 0 $count); do
 			local enable=$(u_get $i enable 0)
 			local macaddr=$(u_get $i macaddr)
@@ -49,10 +50,13 @@ add_rule(){
 }
 
 del_rule(){
-	handles=$(nft -a list chain inet fw4 forward_lan | grep -E "TIMECONTROL" | awk -F '# handle ' '{print$2}')
-	for handle in $handles
+	for chain_mia in dstnat forward_lan
 	do
-		nft delete rule inet fw4 forward_lan handle ${handle} 2>/dev/null
+		handles=$(nft -a list chain inet fw4 ${chain_mia} | grep -E "TIMECONTROL" | awk -F '# handle ' '{print$2}')
+		for handle in $handles
+		do
+			nft delete rule inet fw4 ${chain_mia} handle ${handle} 2>/dev/null
+		done
 	done
 }
 
