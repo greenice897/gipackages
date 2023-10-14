@@ -42,7 +42,7 @@ start_service() {
 
 stop_service() {
   service_stop $PROG
-  handles=$(nft -a list chain inet fw4 forward | grep -E "sb-tun*" | awk -F '# handle ' '{print$2}')
+  handles=$(nft -a list chain inet fw4 forward | grep -E "sb-tun" | awk -F '# handle ' '{print$2}')
       for handle in $handles
       do
            nft delete rule inet fw4 forward handle ${handle} 2>/dev/null
